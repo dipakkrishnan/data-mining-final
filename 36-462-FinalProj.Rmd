@@ -1,0 +1,76 @@
+---
+title: "36-462 Final Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Load ## 
+
+```{r}
+price = read.csv("/Users/dipakkrishnan/Downloads/project0406/price.csv")
+review = read.csv("/Users/dipakkrishnan/Downloads/project0406/review.csv")
+price.t = read.csv("/Users/dipakkrishnan/Downloads/project0406/price_test.csv")
+review.t = read.csv("/Users/dipakkrishnan/Downloads/project0406/review_test.csv")
+```
+
+## Regression Task 1 ## 
+
+```{r}
+head(price)
+colnames(price)
+```
+
+## Data Pre-processing ## 
+
+```{r}
+price.pre = price
+price.pre$host_is_superhost = as.factor(as.numeric(price.pre$host_is_superhost) -1)
+price.pre$host_identity_verified = as.factor(as.numeric(price.pre$host_identity_verified) -1)
+price.pre$instant_bookable = as.factor(as.numeric(price.pre$instant_bookable) -1)
+price.pre$host_response_rate = as.numeric(sub("%", "", price.pre$host_response_rate)) / 100
+price.pre$host_response_time = as.factor(unclass(price.pre$host_response_time) -1)
+price.pre$cleaning_fee = as.numeric(sub("$", "", price.pre$cleaning_fee, fixed = T))
+price.pre$price = as.numeric(gsub("$", "", price.pre$price, fixed = T))
+price.pre$cancellation_policy = as.factor(as.numeric(price.pre$cancellation_policy))
+
+head(price.pre)
+sum(is.na(price.pre))
+```
+
+## Train/Test Split ## 
+
+** Split 70/30 ** 
+
+```{r}
+n <- nrow(price.pre)
+sample.price <- price.pre[sample(n), ]
+train.indices <- 1:round(0.7 * n)
+train <- sample.price[train.indices, 
+test.indices <- (round(0.7 * n) + 1):n
+test <- sample.price[test.indices, ]
+```
+
+## Initial Modeling ## 
+
+** MLR ** 
+
+```{r}
+train.lm = train[, -c(9,19)]
+mlr = lm(price~., data = train.lm)
+summary(mlr)
+predictions.mlr = predict(mlr, newdata = test)
+mse.mlr = mean((test$price - predictions.mlr)^2) 
+```
+
+
+
+
+
+
+
+
+
+
