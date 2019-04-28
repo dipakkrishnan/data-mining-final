@@ -1,5 +1,6 @@
 ---
-title: "36-462 Final Project"
+title: "Santi"
+author: "Santythegreat"
 output: html_document
 ---
 
@@ -19,7 +20,7 @@ review.t = read.csv("review_test.csv")
 ## Regression Task 1 ## 
 
 ```{r}
-head(price)
+# head(price)
 colnames(price)
 ```
 
@@ -36,7 +37,7 @@ price.pre$cleaning_fee = as.numeric(sub("$", "", price.pre$cleaning_fee, fixed =
 price.pre$price = as.numeric(gsub("$", "", price.pre$price, fixed = T))
 price.pre$cancellation_policy = as.factor(as.numeric(price.pre$cancellation_policy))
 
-head(price.pre)
+# head(price.pre)
 sum(is.na(price.pre))
 ```
 
@@ -72,5 +73,51 @@ mse.mlr = mean((test$price - predictions.mlr)^2)
 
 
 
+
+
+
+
+
+## Cleaning Amenities ##
+
+```{r}
+library(stringr)
+library(container)
+
+d <- Dict$new()
+
+
+# for (i in c(1:length(price.pre$amenities))) {
+for (i in c(1:2)) {
+  s = toString(price.pre$amenities[i])
+  s = strsplit(s,",")
+  newS = str_replace(s[[1]],'\\{',"")
+  newS = str_replace(newS,'\\}',"")
+  newS = str_replace(newS,'\"',"")
+  newS = str_replace(newS,'\"',"")
+  newS = tolower(newS)
+  
+  # print(length(newS))
+
+  for (j in c(1:length(newS))) {
+    if (length(newS[j]) != 1) {print("YO")}
+    # print(length(newS[j]))
+    # if (d$has(newS[j])) {
+    #   v = d$peek(newS[j])
+    #   d$discard(newS[j])$values()
+    #   d$add(newS[j],c + 1)
+    # }
+    # else {
+    #   # if (length(newS[j]) == 0) {
+    #   #   print("LENGTH 0")
+    #   #   break
+    #   # }
+    #   d$add(newS[j],1)
+    # }
+  }
+}
+
+
+```
 
 
