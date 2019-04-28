@@ -1,0 +1,113 @@
+---
+title: "36-462 Final Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Load ## 
+
+```{r}
+price = read.csv("/Users/dipakkrishnan/Downloads/project0406/price.csv")
+review = read.csv("/Users/dipakkrishnan/Downloads/project0406/review.csv")
+price.t = read.csv("/Users/dipakkrishnan/Downloads/project0406/price_test.csv")
+review.t = read.csv("/Users/dipakkrishnan/Downloads/project0406/review_test.csv")
+```
+
+## Regression Task 1 ## 
+
+```{r}
+head(price)
+colnames(price)
+```
+
+## Data Pre-processing ## 
+
+```{r, warning = F}
+price.pre = price
+price.pre$host_is_superhost = as.factor(as.numeric(price.pre$host_is_superhost) -1)
+price.pre$host_identity_verified = as.factor(as.numeric(price.pre$host_identity_verified) -1)
+price.pre$instant_bookable = as.factor(as.numeric(price.pre$instant_bookable) -1)
+price.pre$host_response_rate = as.numeric(sub("%", "", price.pre$host_response_rate)) / 100
+price.pre$host_response_time = as.factor(unclass(price.pre$host_response_time) -1)
+price.pre$cleaning_fee = as.numeric(sub("$", "", price.pre$cleaning_fee, fixed = T))
+price.pre$price = as.numeric(sub("$", "", price.pre$price, fixed = T))
+price.pre$cleaning_fee[is.na(price.pre$cleaning_fee)] = 0
+price.pre$price[is.na(price.pre$price)] = 0
+price.pre$cancellation_policy = as.factor(as.numeric(price.pre$cancellation_policy))
+
+head(price.pre)
+sum(is.na(price.pre))
+
+price.pre = na.omit(price.pre)
+```
+
+## Train/Test Split ## 
+
+** Split 70/30 ** 
+
+```{r}
+n <- nrow(price.pre)
+sample.price <- price.pre[sample(n), ]
+train.indices <- 1:round(0.7 * n)
+train <- sample.price[train.indices, ]
+test.indices <- (round(0.7 * n) + 1):n
+test <- sample.price[test.indices, ]
+```
+
+## Initial Modeling ## 
+
+** MLR ** 
+
+```{r}
+train.lm = train[, -c(10, 19)]
+test.lm = test[, -c(10, 19)]
+mlr = lm(price~., data = train.lm)
+summary(mlr)
+predictions.mlr = predict(mlr, newdata = test.lm)
+mse.mlr = mean((test$price - predictions.mlr)^2) 
+mse.mlr
+```
+
+## Location Mapping ## 
+
+## Standard Lat/Long coordinates from Google ## 
+
+```{r}
+library(geosphere)
+pike.place.lat = 47.6097 ; pike.place.long = 122.3422
+space.needle.lat = 47.6205 ; space.needle.long = 122.3493
+downtown.lat = 47.6050 ; downtown.long = 122.3344 
+gum.wall.lat = 47.6084 ; gum.wall.long = 122.3404
+great.wheel.lat = 47.6062 ; great.wheel.long = 122.3425
+
+distance.pike.lat = c(abs(price.pre$latitude - pike.place.lat)) ; distance.pike.long = c(abs(price.pre$longitude - pike.place.long))
+distance.space.lat = c(abs(price.pre$latitude - space.needle.lat)) ; distance.space.long = c(abs(price.pre$longitude - space.needle.long))
+distance.downtown.lat = c(abs(price.pre$latitude - downtown.lat)) ; distance.downtown.long = c(abs(price.pre$longitude - downtown.long))
+distance.gum.lat = c(abs(price.pre$latitude - gum.wall.lat)) ; distance.gum.long = c(abs(price.pre$longitude - gum.wall.long))
+distance.wheel.lat = c(abs(price.pre$latitude - great.wheel.lat)) ; distance.wheel.long = c(abs(price.pre$longitude - great.wheel.long))
+
+pike.dist = c()
+space.dist = c()
+downtown.dist = c()
+gum.dist = c()
+wheel.dist = c()
+for(i in 1:length(price.pre$latitude)) {
+  pike.dist[i] = distm(c(pike.place.long, pike.place.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
+  space.dist[i] = distm(c(space.needle.long, space.needle.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
+  downtown.dist[i] = distm(c(downtown.long, downtown.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
+  gum.dist[i] = distm(c(gum.wall.long, gum.wall.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
+  wheel.dist[i] = distm(c(great.wheel.long, great.wheel.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
+}
+
+price.pre$pike_dist = pike.dist ; price.pre$space_dist = space.dist
+price.pre$downtown_dist = downtown.dist ; price.pre$gum_dist = gum.dist
+price.pre$wheel_dist = wheel.dist
+```
+
+
+
+
+
