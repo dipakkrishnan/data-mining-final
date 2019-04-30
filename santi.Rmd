@@ -227,7 +227,6 @@ for (p in common) {
     levels(review.post[[p]]) <- levels(review.pre[[p]]) 
   } 
 } 
-
 rand.fit.test = randomForest(review_scores_rating~., data = review.pre, ntree = 500, mtry = 4)
 #res = tuneRF(x = subset(review.pre, select = -review_scores_rating), y = review.pre$review_scores_rating, ntreeTry=500, doBest = T)
 rand.predictions.test.fit = predict(rand.fit.test, newdata = review.post[, -22])
