@@ -42,6 +42,74 @@ head(price.pre)
 sum(is.na(price.pre))
 
 price.pre = na.omit(price.pre)
+dim(price.pre)
+```
+
+## Preprocess Amenities ## 
+
+```{r}
+library(stringr)
+amenities = sapply(price.pre$amenities, FUN=function(x) {
+  # some function that just splits up all the words in each row of amenities
+  s = toString(x)
+  s = strsplit(s[[1]],",")
+  newS = str_replace(s[[1]],'\\{',"")
+  newS = str_replace(newS,'\\}',"")
+  newS = str_replace(newS,'\"',"")
+  newS = str_replace(newS,'\"',"")
+  tolower(newS)
+})
+
+num.amenities = c()
+for(i in 1:length(price.pre$amenities)) {
+  num.amenities[i] = length(amenities[[i]])
+}
+price.pre$num_amenities = num.amenities
+dim(price.pre)
+```
+
+## Top Amenities ## 
+
+```{r}
+l = c()
+for (i in c(1:length(price.pre$amenities))) {
+  g = v[[i]]
+  l = c(l,g)
+}
+t = sort(table(l),decreasing = TRUE)
+#t[1:30]
+```
+
+## Location Mapping ## 
+
+## Standard Lat/Long coordinates from Google ## 
+
+```{r}
+library(geosphere)
+pike.place.lat = 47.6097 ; pike.place.long = -122.3422
+space.needle.lat = 47.6205 ; space.needle.long = -122.3493
+downtown.lat = 47.6050 ; downtown.long = -122.3344 
+gum.wall.lat = 47.6084 ; gum.wall.long = -122.3404
+great.wheel.lat = 47.6062 ; great.wheel.long = -122.3425
+
+pike.dist = c()
+space.dist = c()
+downtown.dist = c()
+gum.dist = c()
+wheel.dist = c()
+for(i in 1:length(price.pre$latitude)) {
+  pike.dist[i] = distm(c(pike.place.long, pike.place.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+  space.dist[i] = distm(c(space.needle.long, space.needle.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+  downtown.dist[i] = distm(c(downtown.long, downtown.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+  gum.dist[i] = distm(c(gum.wall.long, gum.wall.lat), c(price.pre $longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+  wheel.dist[i] = distm(c(great.wheel.long, great.wheel.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+}
+
+price.pre$pike_dist = pike.dist ; price.pre$space_dist = space.dist
+price.pre$downtown_dist = downtown.dist ; price.pre$gum_dist = gum.dist
+price.pre$wheel_dist = wheel.dist
+head(price.pre)
+dim(price.pre)
 ```
 
 ## Train/Test Split ## 
@@ -67,44 +135,185 @@ test.lm = test[, -c(10, 19)]
 mlr = lm(price~., data = train.lm)
 summary(mlr)
 predictions.mlr = predict(mlr, newdata = test.lm)
-mse.mlr = mean((test$price - predictions.mlr)^2) 
+mse.mlr = mean((test.lm$price - predictions.mlr)^2) 
 mse.mlr
 ```
 
-## Location Mapping ## 
 
-## Standard Lat/Long coordinates from Google ## 
+
+## Ridge/Lasso ## 
 
 ```{r}
-library(geosphere)
-pike.place.lat = 47.6097 ; pike.place.long = 122.3422
-space.needle.lat = 47.6205 ; space.needle.long = 122.3493
-downtown.lat = 47.6050 ; downtown.long = 122.3344 
-gum.wall.lat = 47.6084 ; gum.wall.long = 122.3404
-great.wheel.lat = 47.6062 ; great.wheel.long = 122.3425
+library(glmnet)
+y = train.lm$price 
+x = model.matrix(price~., data = train.lm)[,-1]
+cv.lasso = cv.glmnet(x, y, alpha = 1)
+cv.ridge = cv.glmnet(x, y, alpha = 0)
+cv.lasso$lambda.min
+cv.ridge$lambda.min
 
-distance.pike.lat = c(abs(price.pre$latitude - pike.place.lat)) ; distance.pike.long = c(abs(price.pre$longitude - pike.place.long))
-distance.space.lat = c(abs(price.pre$latitude - space.needle.lat)) ; distance.space.long = c(abs(price.pre$longitude - space.needle.long))
-distance.downtown.lat = c(abs(price.pre$latitude - downtown.lat)) ; distance.downtown.long = c(abs(price.pre$longitude - downtown.long))
-distance.gum.lat = c(abs(price.pre$latitude - gum.wall.lat)) ; distance.gum.long = c(abs(price.pre$longitude - gum.wall.long))
-distance.wheel.lat = c(abs(price.pre$latitude - great.wheel.lat)) ; distance.wheel.long = c(abs(price.pre$longitude - great.wheel.long))
+ridge = glmnet(x, y, alpha = 0, lambda = cv.ridge$lambda.min)
+lasso = glmnet(x, y, alpha = 1, lambda = cv.lasso$lambda.min)
 
-pike.dist = c()
-space.dist = c()
-downtown.dist = c()
-gum.dist = c()
-wheel.dist = c()
-for(i in 1:length(price.pre$latitude)) {
-  pike.dist[i] = distm(c(pike.place.long, pike.place.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
-  space.dist[i] = distm(c(space.needle.long, space.needle.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
-  downtown.dist[i] = distm(c(downtown.long, downtown.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
-  gum.dist[i] = distm(c(gum.wall.long, gum.wall.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
-  wheel.dist[i] = distm(c(great.wheel.long, great.wheel.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distHaversine)
+x.test <- model.matrix(price ~., test.lm)[,-1]
+ridge.predictions = predict(ridge, x.test)
+lasso.predictions = predict(lasso, x.test)
+mse.ridge = mean((test.lm$price - ridge.predictions)^2)
+mse.lasso = mean((test.lm$price - lasso.predictions)^2)
+
+mse.ridge
+mse.lasso
+```
+
+## Trees ## 
+
+```{r}
+library(rpart)
+tree = rpart(price~., data = train.lm)
+plotcp(tree)
+pruned.tree = prune(tree, cp = 0.019)
+tree.predictions = predict(tree, test.lm)
+pruned.tree.predictions = predict(pruned.tree, test.lm)
+mse.tree = mean((test.lm$price - tree.predictions)^2)
+pruned.mse = mean((test.lm$price - pruned.tree.predictions)^2)
+mse.tree
+pruned.mse
+```
+
+
+## Random Forest ## 
+
+```{r}
+library(randomForest)
+rand.fit = randomForest(price~., data = train.lm, ntree = 500)
+importance(rand.fit)
+rand.predictions = predict(rand.fit, newdata = test.lm)
+mse.rand = mean((test.lm$price - rand.predictions)^2)
+mse.rand
+```
+
+## Neural Net ## 
+
+## Normalization Step ## 
+
+```{r}
+library(neuralnet)
+index <- sample(1:nrow(price.pre),round(0.7*nrow(price.pre)))
+data <- price.pre[, sapply(price.pre, is.numeric)]
+maxs <- as.numeric(apply(data, 2, max))
+mins <- as.numeric(apply(data, 2, min))
+scaled <- as.data.frame(scale(data, center = mins, scale = maxs - mins))
+train_ <- scaled[index,]
+test_ <- scaled[-index,]
+```
+
+## NN Fit ## 
+
+```{r}
+names = names(train_)
+f <- as.formula(paste("price ~", paste(names[!names %in% "price"], collapse = " + ")))
+nn <- neuralnet(f,data=train_,hidden=c(5,3),stepmax = 1e6, linear.output=T)
+plot(nn)
+```
+
+## Prediction NN ## 
+
+```{r}
+pr.nn <- compute(nn,test_)
+pr.nn_ <- pr.nn$net.result*(max(data$price)-min(data$price))+min(data$price)
+test.r <- (test_$price)*(max(data$price)-min(data$price))+min(data$price)
+MSE.nn <- mean((test.r - pr.nn_)^2)
+```
+
+
+## ** TEST SET PREDICTION ** ## 
+
+## Test Set ## 
+
+```{r}
+price.t.l = price.t
+price.t.l$host_is_superhost = as.factor(as.numeric(price.t.l$host_is_superhost) -1)
+price.t.l$host_identity_verified = as.factor(as.numeric(price.t.l$host_identity_verified) -1)
+price.t.l$instant_bookable = as.factor(as.numeric(price.t.l$instant_bookable) -1)
+price.t.l$host_response_rate = as.numeric(sub("%", "", price.t.l$host_response_rate)) / 100
+price.t.l$host_response_time = as.factor(unclass(price.t.l$host_response_time) -1)
+price.t.l$cleaning_fee = as.numeric(sub("$", "", price.t.l$cleaning_fee, fixed = T))
+price.t.l$price = as.numeric(sub("$", "", price.t.l$price, fixed = T))
+price.t.l$cleaning_fee[is.na(price.t.l$cleaning_fee)] = 0
+price.t.l$price[is.na(price.t.l$price)] = 0
+price.t.l$cancellation_policy = as.factor(as.numeric(price.t.l$cancellation_policy))
+
+head(price.t.l)
+sum(is.na(price.t.l))
+
+price.t.l = na.omit(price.t.l)
+dim(price.t.l)
+```
+## Adding the same features present in training to test ##
+
+## Amenities ## 
+```{r}
+amenities = sapply(price.t.l$amenities, FUN=function(x) {
+  # some function that just splits up all the words in each row of amenities
+  s = toString(x)
+  s = strsplit(s[[1]],",")
+  newS = str_replace(s[[1]],'\\{',"")
+  newS = str_replace(newS,'\\}',"")
+  newS = str_replace(newS,'\"',"")
+  newS = str_replace(newS,'\"',"")
+  tolower(newS)
+})
+
+num.amenities = c()
+for(i in 1:length(price.t.l$amenities)) {
+  num.amenities[i] = length(amenities[[i]])
+}
+price.t.l$num_amenities = num.amenities
+dim(price.t.l)
+dim(price.pre)
+```
+
+
+```{r}
+pike.dist.t = c()
+space.dist.t = c()
+downtown.dist.t = c()
+gum.dist.t = c()
+wheel.dist.t = c()
+
+for(i in 1:length(price.t.l$latitude)) {
+  pike.dist.t[i] = distm(c(pike.place.long, pike.place.lat), c(price.t.l$longitude[i], price.t.l$latitude[i]), fun = distGeo) / 1609.344
+  space.dist.t[i] = distm(c(space.needle.long, space.needle.lat), c(price.t.l$longitude[i], price.t.l$latitude[i]), fun = distGeo) / 1609.344
+  downtown.dist.t[i] = distm(c(downtown.long, downtown.lat), c(price.t.l$longitude[i], price.t.l$latitude[i]), fun = distGeo) / 1609.344
+  gum.dist.t[i] = distm(c(gum.wall.long, gum.wall.lat), c(price.t.l$longitude[i], price.t.l$latitude[i]), fun = distGeo) / 1609.344
+  wheel.dist.t[i] = distm(c(great.wheel.long, great.wheel.lat), c(price.t.l$longitude[i], price.t.l$latitude[i]), fun = distGeo) / 1609.344
 }
 
-price.pre$pike_dist = pike.dist ; price.pre$space_dist = space.dist
-price.pre$downtown_dist = downtown.dist ; price.pre$gum_dist = gum.dist
-price.pre$wheel_dist = wheel.dist
+price.t.l$pike_dist = pike.dist.t ; price.t.l$space_dist = space.dist.t
+price.t.l$downtown_dist = downtown.dist.t ; price.t.l$gum_dist = gum.dist.t
+price.t.l$wheel_dist = wheel.dist.t
+head(price.t.l)
+ncol(price.t.l)
+ncol(price.pre)
+```
+
+
+## Random Forest Implementation ## 
+
+```{r}
+price.pre = price.pre[, -c(9,19)]
+price.t.l = price.t.l[, -c(9,19)]
+dim(price.pre)
+dim(price.t.l)
+common <- intersect(names(price.pre), names(price.t.l))
+for (p in common) { 
+  if (class(price.pre[[p]]) == "factor") { 
+    levels(price.t.l[[p]]) <- levels(price.pre[[p]]) 
+  } 
+} 
+rand.train = randomForest(price~., data = price.pre, ntree = 500)
+rand.predictions.test = predict(rand.train, newdata = price.t.l)
+mse.rand.final = mean((price.t.l$price - rand.predictions.test)^2)
 ```
 
 
