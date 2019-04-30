@@ -205,7 +205,7 @@ print(paste('Accuracy',1-misClasificError))
 # print(paste('Accuracy',1-misClasificError))
 ```
 
-## Random Forest
+## Random Forest and CV ## 
 
 ```{r}
 library(randomForest)
@@ -228,20 +228,48 @@ for (p in common) {
   } 
 } 
 
-
 rand.fit.test = randomForest(review_scores_rating~., data = review.pre, ntree = 500, mtry = 4)
 #res = tuneRF(x = subset(review.pre, select = -review_scores_rating), y = review.pre$review_scores_rating, ntreeTry=500, doBest = T)
-rand.predictions.test.fit = predict(rand.fit.test, newdata = review.post)
+rand.predictions.test.fit = predict(rand.fit.test, newdata = review.post[, -22])
 
+nfold = 5
+samp <- sample(rep(1:nfold, ceiling(nrow(review.pre)/nfold))[1:nrow(review.pre)])
+misclass = c()
+for(k in 1:nfold) {
+  testd <- review.pre[which(samp==k), ] 
+  traind <- review.pre[-which(samp==k), ] 
+  rf = randomForest(review_scores_rating~., data = traind, ntree = 500, mtry = 4)
+  rf.pred = predict(rf, newdata = testd)
+  misclass[k] = mean(rf.pred != testd$review_scores_rating)
+}
+misclass = mean(misclass)
 
-misclass = mean(rand.predictions.test.fit != review.post$review_scores_rating)
+samp.price = sample(rep(1:nfold, ceiling(nrow(price.pre)/nfold))[1:nrow(price.pre)])
+mse = c()
+for(k in 1:nfold) {
+  testd <- price.pre[which(samp.price==k), ] 
+  traind <- price.pre[-which(samp.price==k), ] 
+  rf.reg = randomForest(price~., data = traind, ntree = 500)
+  rf.reg.pred = predict(rf.reg, newdata = testd)
+  mse[k] = mean((rf.reg.pred - testd$price)^2)
+}
+mse = mean(mse)
+#misclass = mean(rand.predictions.test.fit != review.pre$review_scores_rating)
+```
 
+## Boosting ## 
+```{r}
 boost = boosting(review_scores_rating~., data = review.pre, mfinal = 100, coeflearn = "Freund")
-boost.pred = predict.boosting(boost, newdata = review.post)
+boost.pred = predict.boosting(boost, newdata = review.post[,-22])
 misclass.boost = boost.pred$error
+```
 
+## Final Save ## 
+
+
+```{r}
 price.guesses = rand.predictions.test
-price.mse = mse.rand.final 
+price.mse = mse
 review.guesses = rand.predictions.test.fit
 review.acc = misclass
 team.name = "TMC"

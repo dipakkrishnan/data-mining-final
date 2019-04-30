@@ -312,9 +312,9 @@ for (p in common) {
     levels(price.t.l[[p]]) <- levels(price.pre[[p]]) 
   } 
 } 
+
 rand.train = randomForest(price~., data = price.pre, ntree = 500)
-rand.predictions.test = predict(rand.train, newdata = price.t.l)
-mse.rand.final = mean((price.t.l$price - rand.predictions.test)^2)
+rand.predictions.test = predict(rand.train, newdata = price.t.l[, -23])
 ```
 
 
