@@ -14,12 +14,6 @@ knitr::opts_chunk$set(cache = TRUE) # cache results
 options(np.messages = FALSE)
 ```
 
-```{r}
-price = read.csv("price.csv")
-review = read.csv("review.csv")
-price.t = read.csv("price_test.csv")
-review.t = read.csv("review_test.csv")
-```
 
 ```{r}
 library(stringr)
@@ -41,6 +35,9 @@ review.pre$price = as.numeric(gsub("$", "", review.pre$price, fixed = T))
 review.pre$cancellation_policy = as.factor(as.numeric(review.pre$cancellation_policy))
 review.pre$review_scores_rating = as.factor(as.numeric(review.pre$review_scores_rating))
 
+review.pre$cleaning_fee[is.na(review.pre$cleaning_fee)] = 0
+review.pre$price[is.na(review.pre$price)] = 0
+
 review.post = review.t
 review.post$host_is_superhost = as.factor(as.numeric(review.post$host_is_superhost) -1)
 review.post$host_identity_verified = as.factor(as.numeric(review.post$host_identity_verified) -1)
@@ -50,7 +47,12 @@ review.post$host_response_time = as.factor(unclass(review.post$host_response_tim
 review.post$cleaning_fee = as.numeric(sub("$", "", review.post$cleaning_fee, fixed = T))
 review.post$price = as.numeric(gsub("$", "", review.post$price, fixed = T))
 review.post$cancellation_policy = as.factor(as.numeric(review.post$cancellation_policy))
-# review.post$review_scores_rating = as.factor(as.numeric(review.post$review_scores_rating))
+
+review.post$cleaning_fee[is.na(review.post$cleaning_fee)] = 0
+review.post$price[is.na(review.post$price)] = 0
+
+dim(review.pre) ; dim(review.post)
+
 ```
 
 ## Amenities
@@ -155,6 +157,9 @@ for(i in 1:length(review.post$latitude)) {
 review.post$pike_dist = pike.dist.post ; review.post$space_dist = space.dist.post
 review.post$downtown_dist = downtown.dist.post ; review.post$gum_dist = gum.dist.post
 review.post$wheel_dist = wheel.dist.post
+
+dim(review.pre) ; dim(review.post)
+
 ```
 
 
@@ -204,13 +209,43 @@ print(paste('Accuracy',1-misClasificError))
 
 ```{r}
 library(randomForest)
+library(gbm)
+library(rpart)
+library(adabag)
+library(ada)
 rand.fit = randomForest(review_scores_rating~., data = trainR, ntree = 500, na.action=na.exclude)
 rand.predictions = predict(rand.fit, newdata = testR)
 nas = which(is.na(rand.predictions))
 misClasificError <- mean(rand.predictions[-nas] != testR$review_scores_rating[-nas])
 print(paste('Accuracy',1-misClasificError))
 
+review.pre = review.pre[, -c(9,19)]
+review.post = review.post[, -c(9,19)]
+common <- intersect(names(review.pre), names(review.post))
+for (p in common) { 
+  if (class(review.pre[[p]]) == "factor") { 
+    levels(review.post[[p]]) <- levels(review.pre[[p]]) 
+  } 
+} 
 
+
+rand.fit.test = randomForest(review_scores_rating~., data = review.pre, ntree = 500, mtry = 4)
+#res = tuneRF(x = subset(review.pre, select = -review_scores_rating), y = review.pre$review_scores_rating, ntreeTry=500, doBest = T)
+rand.predictions.test.fit = predict(rand.fit.test, newdata = review.post)
+
+
+misclass = mean(rand.predictions.test.fit != review.post$review_scores_rating)
+
+boost = boosting(review_scores_rating~., data = review.pre, mfinal = 100, coeflearn = "Freund")
+boost.pred = predict.boosting(boost, newdata = review.post)
+misclass.boost = boost.pred$error
+
+price.guesses = rand.predictions.test
+price.mse = mse.rand.final 
+review.guesses = rand.predictions.test.fit
+review.acc = misclass
+team.name = "TMC"
+save(list=c("price.guesses","price.mse","review.guesses","review.acc", "team.name"),file="stat462final.RData")
 # 
 # plot(rand.fit)
 # varImpPlot(rand.fit,

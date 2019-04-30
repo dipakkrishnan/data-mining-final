@@ -249,6 +249,7 @@ sum(is.na(price.t.l))
 price.t.l = na.omit(price.t.l)
 dim(price.t.l)
 ```
+
 ## Adding the same features present in training to test ##
 
 ## Amenities ## 
