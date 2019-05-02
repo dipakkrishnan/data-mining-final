@@ -12,6 +12,102 @@ output:
     number_sections: TRUE
 ---
 
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE) # show code
+knitr::opts_chunk$set(warning = FALSE) # hide warnings
+knitr::opts_chunk$set(message = FALSE) # hide messages
+knitr::opts_chunk$set(cache = TRUE) # cache results 
+```
+
+```{r,echo=FALSE}
+price = read.csv("price.csv")
+review = read.csv("review.csv")
+price.t = read.csv("price_test.csv")
+review.t = read.csv("review_test.csv")
+
+### process data
+
+price.pre = price
+price.pre$host_is_superhost = as.factor(as.numeric(price.pre$host_is_superhost) -1)
+price.pre$host_identity_verified = as.factor(as.numeric(price.pre$host_identity_verified) -1)
+price.pre$instant_bookable = as.factor(as.numeric(price.pre$instant_bookable) -1)
+price.pre$host_response_rate = as.numeric(sub("%", "", price.pre$host_response_rate)) / 100
+price.pre$host_response_time = as.factor(unclass(price.pre$host_response_time) -1)
+price.pre$cleaning_fee = as.numeric(sub("$", "", price.pre$cleaning_fee, fixed = T))
+price.pre$price = as.numeric(sub("$", "", price.pre$price, fixed = T))
+price.pre$cleaning_fee[is.na(price.pre$cleaning_fee)] = 0
+price.pre$price[is.na(price.pre$price)] = 0
+price.pre$cancellation_policy = as.factor(as.numeric(price.pre$cancellation_policy))
+
+review.pre = review
+review.pre$host_is_superhost = as.factor(as.numeric(review.pre$host_is_superhost) -1)
+review.pre$host_identity_verified = as.factor(as.numeric(review.pre$host_identity_verified) -1)
+review.pre$instant_bookable = as.factor(as.numeric(review.pre$instant_bookable) -1)
+review.pre$host_response_rate = as.numeric(sub("%", "", review.pre$host_response_rate)) / 100
+review.pre$host_response_time = as.factor(unclass(review.pre$host_response_time) -1)
+review.pre$cleaning_fee = as.numeric(sub("$", "", review.pre$cleaning_fee, fixed = T))
+review.pre$price = as.numeric(sub("$", "", review.pre$price, fixed = T))
+review.pre$cleaning_fee[is.na(review.pre$cleaning_fee)] = 0
+review.pre$price[is.na(review.pre$price)] = 0
+review.pre$cancellation_policy = as.factor(as.numeric(review.pre$cancellation_policy))
+
+library(stringr)
+
+amenities = sapply(price.pre$amenities, FUN=function(x) {
+  # some function that just splits up all the words in each row of amenities
+  s = toString(x)
+  s = strsplit(s[[1]],",")
+  newS = str_replace(s[[1]],'\\{',"")
+  newS = str_replace(newS,'\\}',"")
+  newS = str_replace(newS,'\"',"")
+  newS = str_replace(newS,'\"',"")
+  tolower(newS)
+})
+
+amenities.review = sapply(review.pre$amenities, FUN=function(x) {
+  # some function that just splits up all the words in each row of amenities
+  s = toString(x)
+  s = strsplit(s[[1]],",")
+  newS = str_replace(s[[1]],'\\{',"")
+  newS = str_replace(newS,'\\}',"")
+  newS = str_replace(newS,'\"',"")
+  newS = str_replace(newS,'\"',"")
+  tolower(newS)
+})
+
+num.amenities = c()
+for(i in 1:length(price.pre$amenities)) {
+  num.amenities[i] = length(amenities[[i]])
+}
+
+num.amenities.rev = c()
+for(i in 1:length(review.pre$amenities)) {
+  num.amenities.rev[i] = length(amenities.review[[i]])
+}
+
+price.pre$num_amenities = num.amenities
+review.pre$num_amenities = num.amenities.rev
+
+###
+
+n <- nrow(price.pre)
+sample.price <- price.pre[sample(n), ]
+train.indices <- 1:round(0.7 * n)
+train <- sample.price[train.indices, ]
+test.indices <- (round(0.7 * n) + 1):n
+test <- sample.price[test.indices, ]
+
+nR <- nrow(review.pre)
+sample.review <- review.pre[sample(nR), ]
+train.indices.rev <- 1:round(0.7 * nR)
+trainR <- sample.review[train.indices.rev, ]
+test.indices.rev <- (round(0.7 * nR) + 1):nR
+testR <- sample.review[test.indices.rev, ]
+
+price.pre = price.pre[,-c(11,19)]
+review.pre = review.pre[,-c(10,19)]
+```
+
 # Introduction
 
 The main dataset we are working with in this project has data on Airbnb listings in
@@ -30,49 +126,37 @@ to 0, meaning that there was no price or cleaning fee for a given listing.
 
 # Exploration
 
-```{r,echo=FALSE}
-price = read.csv("price.csv")
-review = read.csv("review.csv")
-price.t = read.csv("price_test.csv")
-review.t = read.csv("review_test.csv")
+We begin by taking a look at the different neighborhoods in Seattle. The table below summarizes the average price per neighborhood and shows the relative proportion of the price of each neighborhood in both datasets. About 18% of the listings alone are located in Downtown Seattle. On average, the price per listing is about 60 dollars more expensive there than the overall average. Similarly, in Queen Anne, a notoriously expensive area in Seattle, the average price is about 30 dollars more expensive than the overall average. This difference in price hints at the importance of location for an Airbnb listing. 
 
-review.pre = price
-review.pre$host_is_superhost = as.factor(as.numeric(review.pre$host_is_superhost) -1)
-review.pre$host_identity_verified = as.factor(as.numeric(review.pre$host_identity_verified) -1)
-review.pre$instant_bookable = as.factor(as.numeric(review.pre$instant_bookable) -1)
-review.pre$host_response_rate = as.numeric(sub("%", "", review.pre$host_response_rate)) / 100
-review.pre$host_response_time = as.factor(unclass(review.pre$host_response_time) -1)
-review.pre$cleaning_fee = as.numeric(sub("$", "", review.pre$cleaning_fee, fixed = T))
-review.pre$price = as.numeric(sub("$", "", review.pre$price, fixed = T))
-review.pre$cleaning_fee[is.na(review.pre$cleaning_fee)] = 0
-review.pre$price[is.na(review.pre$price)] = 0
-review.pre$cancellation_policy = as.factor(as.numeric(review.pre$cancellation_policy))
+```{r}
+# for (i in 1:17) {
+#   p = which(price.pre$neighbourhood_group_cleansed == )
+#   r = which(review.pre$neighbourhood_group_cleansed == l)
+#   price.mean = mean(price.pre$price)
+#   review.mean = mean(review.pre$price)
+# }
+
+library(plyr)
+neighborhood.means = aggregate(price.pre[,"price"], list(price.pre$neighbourhood_group_cleansed), mean)
+n.means = aggregate(review.pre[,"price"], list(review.pre$neighbourhood_group_cleansed), mean)
+
+n = names(table(price.pre$neighbourhood_group_cleansed))
+prop = ddply(price.pre, .(neighbourhood_group_cleansed), summarize, prop = 100 * length(neighbourhood_group_cleansed) / nrow(price.pre))
+
+a = cbind("mean price for price" = neighborhood.means[,2], "mean price for review" = n.means[,2], "proportion" = prop[,2])
+rownames(a) = n
+a
 ```
 
-```{r,echo=FALSE}
-# colnames(review.pre)
-# summary(review.pre)
-```
 
-```{r,echo=FALSE}
-# hist(review.pre$price)
-# plot(review.pre$host_is_superhost)
-```
+Each listing in the dataset included its unique latitude and longitude coordinates. To make the latitude and longitude measurements more useful and to improve the feature set, we tabulated the latitude/longitude coordinates of five Seattle places of interest: downtown, the Space Needle, the Gum Wall, Pike Place Market, and the Great Wheel. We wrote a script that calculated, for each listing, the distance between the listing and each of the five important locations in Seattle. This provided context to our task because it established how well-located certain listings were in comparison to others.
 
-checking whether distributions of covariates changed depending on desirability undesirability, 
-And operationalizing variables - so feature engineering
-Like the latitude longitude stuff
-How you deal with Amenities
-
-# Supervised Analysis
-
-## Data Cleaning and Preprocessing
-For both the regression and classification task, predicting price and classifying
+More specifically, for both the regression and classification task, predicting price and classifying
 review_scores_rating in the best way required first looking at the data and evaluating the
 feature set. Both datasets contained the same feature set with the review dataset containing an
 extra variable - our response review_scores_rating for the classification task.
 
-We began by looking for potentially problematic features in the dataset. In the price
+We continued by looking for potentially problematic features in the dataset. In the price
 dataset, there were two: amenities and room_type. The amenities variable, for each listing, lists
 the specific amenities that the listing has such as wifi access, TV availability and air
 conditioning. The room_type variable lists the type of the room offered by a given listing. These
@@ -86,17 +170,6 @@ each listing. We dropped the original amenities column from our analysis, and dr
 room type column as well from our analysis, as the ordering of its levels presented problems in
 the model creation process. We kept all other variables that were initially in the dataset in some
 form in our analysis.
-
-Another slightly problematic feature was the latitude and longitude measurements
-included in the dataset. Each listing in the dataset also included its unique latitude and
-longitude coordinates. However, initially, we did not have any context for these coordinates and
-they were an empty measurement without some sense of how good or bad a given location
-was. To make the latitude and longitude measurements more useful and to improve the feature
-set, we tabulated the latitude/longitude coordinates of five Seattle places of interest:
-downtown, the Space Needle, the Gum Wall, Pike Place Market, and the Great Wheel. We
-wrote a script that calculated, for each listing, the distance between the listing and each of the
-five important locations in Seattle. This provided context to our task because it established
-how well-located certain listings were in comparison to others.
 
 Finally, multiple features in the dataset required recoding. For instance, we refactored
 the host_is_superhost, host_identity_verified, and instant_bookable variables that were
