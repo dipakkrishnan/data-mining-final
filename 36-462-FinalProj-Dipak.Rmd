@@ -306,6 +306,7 @@ ncol(price.pre)
 ## Random Forest Implementation ## 
 
 ```{r}
+library(caret)
 price.pre = price.pre[, -c(9,19)]
 price.t.l = price.t.l[, -c(9,19)]
 dim(price.pre)
@@ -316,8 +317,8 @@ for (p in common) {
     levels(price.t.l[[p]]) <- levels(price.pre[[p]]) 
   } 
 } 
-
 rand.train = randomForest(price~., data = price.pre, ntree = 500)
+varImpPlot(rand.train, sort = T, main = "Training Model Top 15 Variable Importance", n.var = 15)
 rf.p = predict(rand.train, newdata = price.t.l[, -23])
 rand = predict(rand.train, newdata = price.t.l)
 #rand.predictions.test = predict(rand.train, newdata = price.t.l[, -23])
