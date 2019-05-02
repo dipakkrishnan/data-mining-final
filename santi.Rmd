@@ -229,7 +229,9 @@ for (p in common) {
 } 
 rand.fit.test = randomForest(review_scores_rating~., data = review.pre, ntree = 500, mtry = 4)
 #res = tuneRF(x = subset(review.pre, select = -review_scores_rating), y = review.pre$review_scores_rating, ntreeTry=500, doBest = T)
-rand.predictions.test.fit = predict(rand.fit.test, newdata = review.post[, -22])
+rf.c = predict(rand.fit.test, newdata = review.post[, -22])
+
+#rand.predictions.test.fit = predict(rand.fit.test, newdata = review.post[, -22])
 
 nfold = 5
 samp <- sample(rep(1:nfold, ceiling(nrow(review.pre)/nfold))[1:nrow(review.pre)])
@@ -267,9 +269,9 @@ misclass.boost = boost.pred$error
 
 
 ```{r}
-price.guesses = rand.predictions.test
+price.guesses = rf.p
 price.mse = mse
-review.guesses = rand.predictions.test.fit
+review.guesses = rf.c
 review.acc = misclass
 team.name = "TMC"
 save(list=c("price.guesses","price.mse","review.guesses","review.acc", "team.name"),file="stat462final.RData")

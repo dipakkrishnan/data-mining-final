@@ -21,6 +21,8 @@ review.t = read.csv("/Users/dipakkrishnan/Downloads/project0406/review_test.csv"
 ```{r}
 head(price)
 colnames(price)
+dim(price)
+dim(review)
 ```
 
 ## Data Pre-processing ## 
@@ -43,6 +45,7 @@ sum(is.na(price.pre))
 
 price.pre = na.omit(price.pre)
 dim(price.pre)
+cor(price.pre[, sapply(price.pre, class) == "numeric"])
 ```
 
 ## Preprocess Amenities ## 
@@ -133,6 +136,7 @@ test <- sample.price[test.indices, ]
 train.lm = train[, -c(10, 19)]
 test.lm = test[, -c(10, 19)]
 mlr = lm(price~., data = train.lm)
+plot(mlr$residuals ~ mlr$fitted.values)
 summary(mlr)
 predictions.mlr = predict(mlr, newdata = test.lm)
 mse.mlr = mean((test.lm$price - predictions.mlr)^2) 
@@ -314,7 +318,9 @@ for (p in common) {
 } 
 
 rand.train = randomForest(price~., data = price.pre, ntree = 500)
-rand.predictions.test = predict(rand.train, newdata = price.t.l[, -23])
+rf.p = predict(rand.train, newdata = price.t.l[, -23])
+rand = predict(rand.train, newdata = price.t.l)
+#rand.predictions.test = predict(rand.train, newdata = price.t.l[, -23])
 ```
 
 
