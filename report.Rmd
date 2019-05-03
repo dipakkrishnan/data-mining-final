@@ -3,9 +3,6 @@ title: "Final Report"
 author: 
   "Team 26: Dipak Krishnan, Santiago Roa"
 date: "May 3rd, 2019"
-header-includes:
-   \usepackage{setspace}
-   \doublespacing
 output:
   pdf_document:
     toc: yes
@@ -171,7 +168,6 @@ price dataset and 34 NA values in the review dataset. These NA variables were en
 contained in 2 columns, $\it{price}$ and $\it{cleaning\_fee}$. We treated the NA values by converting them
 to 0, meaning that there was no price or cleaning fee for a given listing.
 
-
 # Exploration
 
 We begin by taking a look at the different neighborhoods in Seattle. The table below summarizes the top and bottom five average prices of listings in each neighborhood and its proportion over both datasets. We see that about 18% of the listings alone are located in Downtown Seattle. On average, the price per listing there is about 60 dollars more expensive than the overall average of about `r signif((mean(review.pre$price) + mean(price.pre$price)) / 2,3)` dollars. Note that in Queen Anne, a notoriously expensive area of Seattle, the average price is about 30 dollars more expensive than the overall average. This difference in price hints at the importance of location for an Airbnb listing. 
@@ -190,7 +186,6 @@ top = a[c(7,13,4,10,3),]
 bottom = a[c(16,11,2,9,6),]
 kable(rbind(top,bottom))
 ```
-
 
 Each listing in the dataset included its unique latitude and longitude coordinates. To make the latitude and longitude measurements more useful and to improve the feature set, we tabulated the latitude/longitude coordinates of five Seattle places of interest: downtown, the Space Needle, the Gum Wall, Pike Place Market, and the Great Wheel. We wrote a script that calculated, for each listing, the distance between the listing and each of the five important locations in Seattle. This provided context to our task because it established how well-located certain listings were in comparison to others.
 
@@ -216,10 +211,9 @@ form in our analysis.
 
 Finally, multiple features in the dataset required recoding. For instance, we refactored
 the $\it{host\_is\_superhost}$, $\it{host\_identity\_verified}$, and $\it{instant\_bookable}$ variables that were
-originally true/false variables coded as “t” and “f” into 0/1 variables with 1 coded as true. ##
-maybe line of code here and below ## The $\it{host\_response\_rate}$ variable was a percentage in
-the original dataset, and was changed into a proportion. Two variables: $\it{host\_response\_time}$
-and $\it{cancellation\_policy}$  were refactored into categorical variables with numbers representing
+originally true/false variables coded as “t” and “f” into 0/1 variables with 1 coded as true. The 
+$\it{host\_response\_rate}$ variable was a percentage in the original dataset, and was changed into a proportion. 
+Two variables: $\it{host\_response\_time}$ and $\it{cancellation\_policy}$  were refactored into categorical variables with numbers representing
 levels of factors instead of words. Our response variable $\it{price}$ and the $\it{cleaning\_fee}$ variable
 contained the “$” character before their values - this character was removed and the predictors
 were converted to numeric variables.
@@ -244,8 +238,7 @@ regression assumptions and with cross-validated mean squared error. The residual
 values plot of the fitted regression object, found below, showed a cluster of points around 0 with high
 outliers, potential influential points, and an uneven distribution. Our baseline linear model was
 not optimal for the dataset, and we inferred another technique could produce a better fit. The
-cross-validated error for the linear model using k-fold cross validation was around 11,000. ##
-check this number ##
+cross-validated error for the linear model using k-fold cross validation was approximately 9188.
 
 ```{r,echo=FALSE}
 train.lm = train[, -c(10, 19)]
@@ -264,7 +257,7 @@ cv.glmnet(model.matrix(price \sim., data = price.train), price.train.price, alph
 \end{align}
 We used cross validation techniques to establish the optimal lambda penalty value for both the ridge and lasso
 regression models above. Our cross-validated mean squared errors for both ridge and lasso were
-around 8,000 which was an improvement on our baseline model. ## check this number ##
+around 8942 and 8940 respectively which was an improvement on our baseline model. 
 We further explored trees and random forests. Given the data had a mix of categorical
 and numeric predictors, with some outliers in the data, trees and random forests provide a
 robust measure that does not lose predictive power to high outliers and non-linearity. We also fit a
@@ -275,23 +268,143 @@ pruned.tree = prune(tree, cp = 0.019)
 \end{align}
 From the plot of the decision tree we chose a cp parameter that minimized relative error. The cross validated mean
 squared errors both the normal decision tree and pruned tree improved upon ridge/lasso and
-were around 6,000.
+was 6572 and 6999 respectively.
 
 Random forests are an algorithmic improvement on decision trees, due to their greedy
 search on a subset of features for the best split to make rather than evaluating all features in a
 decision tree. In addition, random forests retain the strengths of decision trees in working with
-numeric and categorical predictors and generally produce low bias, moderate variance models.
+numeric and categorical predictors and generally produce low bias, moderate variance models. The algorithm averages over mutliple predictions to better predict the response. 
 
 We fit a random forest with 500 trees as a baseline on our training set.
 \begin{align}
 randomForest(price \sim., data = price.train, ntree = 500)
 \end{align}
-Random forests had the lowest cross-validated mean squared error around 4000. The
+Random forests had the lowest cross-validated mean squared error around 4005. The
 predictions that the random forest produced were the closest to the price of the listings in our
-training set. ## TuneRF here? ##
+training set. There are two parameters of interest in the random forest algorithm: the number of
+trees to grow and the number of variables randomly sampled as candidates for each split. 
+We attempted to tune the random forest to find the best possible number of variables to sample
+for each split to minimize error, using tuneRF. Tuning the number of trees to
+grow for a random forest isn’t necessary after a certain amount of trees, as the forests stabilize
+at around 200 trees. Our tuned random forest used the default number of variables to consider
+for splits. We made our predictions on the test set using the tuned random forest.
+
+After trying various algorithms, we concluded that random forests produced the lowest
+prediction error without extreme bias or variance, and we chose the random forest model as
+our final regression model. Regarding the relationship between the predictors in the model and
+the predictions themselves, an advantage of random forests is that they have a very
+interpretable variable importance measure that compares the prediction strength of each
+variable. 
+
+![](importance.png)
+
+The most powerful predictors for price in terms
+of prediction strength were $\it{cleaning\_fee}$ and $\it{host\_listings\_count}$. Interestingly, the variables we
+added for location mapping were among the best predictors in the feature set. Our model
+selection process led us to choose our random forest model as the model that best explains
+the test data.
 
 ## Classification Model Selection
 
+Similar preprocessing was done for the price and review datasets, hence the model
+selection process was similar for both the regression and classification tasks - albeit with
+different algorithmic techniques. We split our review dataset into 75% training and 25% test as
+done in the regression task. The amenities and property_type variables were dropped from the
+overall dataset as in the previous task. The same location mapping and amenities cleaning
+added to the regression data feature set was included in the classification data feature set.To
+get a baseline accuracy, it seemed logical to begin with a naive classifier.
+
+We chose a Naive Bayesian classifier, shown below, as a baseline to learn more about our ability to
+classify for our response variable review_scores_rating. 
+\begin{equation}
+naiveBayes(review\_scores\_rating \sim., data = review.train)
+\end{equation}
+Our cross-validated misclassification error was 17% as a baseline. Given that our response variable
+review_scores_rating was split into two classes - 0 and 1 - we thought logistic regression
+would serve as a good starting point.
+
+The following logistic regression model was fit on the training set, which resulted in a cross-validated misclassification error of 12.8%:
+\begin{equation}
+glm(review\_scores\_rating \sim., data = review.train, family = "binomial")
+\end{equation}
+The variables that contribute most to the fit were
+$\it{cancellation\_policy}$, $\it{num\_amenities}$, $\it{neighborhood\_group}$, $\it{host\_identity\_verified}$ and
+$\it{host\_is\_superhost}$. The cleaning of the amenities variable done in preprocessing, on the
+evidence of the logistic fit, seemed to improve the feature set. However, there seemed to be
+possible improvements in misclassification accuracy, hence we tried three other classification
+techniques: support vector machines, boosting, and tree-based random forests.
+
+Support vector machines were deployed in three different ways: utilizing a linear kernel,
+polynomial kernel and a radial kernel, shown below as equations 9, 10, and 11 respectively. The models were trained on the training set with the same set of predictors used for the naive and logistic models. 
+\begin{align}
+svm(review\_scores\_rating \sim., data = review.train, kernel = "linear") \\
+svm(review\_scores\_rating \sim., data = review.train, kernel = "polynomial") \\
+svm(review\_scores\_rating \sim., data = review.train, kernel = "radial")
+\end{align}
+Without tuning, the three methods all produced cross-validated misclassification error of approximately 12%,
+improving on the logistic regression fit. Tuning the models for the parameters cost and gamma
+took an long time to run due to the large feature set - and the best models marginally improved
+misclassification error.
+
+Boosting, like random forests, is an ensemble learner that produces low bias, moderate
+variance models. We theorized that adaptive boosting would be an algorithmic improvement on
+all three of the classification techniques used previously due to its additive nature. Utilizing
+gradient descent to minimize error over a fixed number of trees led us to believe boosting
+would increase classification accuracy. We fit an adaptive boost model with 100 iterations,
+using the “Freund” Adaboost algorithm. Cross-validated misclassification error dropped to sub 12% - approximately 11.7%.
+\begin{equation}
+boosting(review\_scores\_rating \sim., data = review.train, mfinal = 100, coeflearn = "Freund")
+\end{equation}
+
+Finally, we chose to try random forests for many of the same reasons that we denoted
+for the regression task and for its flexibility. We fit a random forest with 500 trees on the training data. 
+\begin{equation}
+randomForest(review\_scores\_rating \sim., data = review.train, ntree = 500, na.action = na.exclude)
+\end{equation}
+
+Initially, the cross-validated misclassification error hovered around
+where the boosting algorithm was performing, but after tuning the number of variables
+randomly sampled as candidates for each split, random forests produced the lowest cross-validated
+misclassification rate of 11.35%. The boosting algorithm and the random forest
+algorithm produced similar results, but since the random forest classifier was easily
+interpretable i.e. it was clear to see which variables that were important for improving accuracy,
+we chose our random forest model as our final model. In a similar fashion to the regression
+task, we modeled the relationship between the predictors and their relative importance to the
+fit. 
+
+![](imp.png)
+
+The most impactful features for classifying $\it{review\_scores\_rating}$ were $\it{host\_listings\_count}$ and $\it{host\_is\_superhost}$. For classifying the desirability of a listing, our engineered features performed very well, but $\it{host\_listings\_count}$ surprisingly had twice as much impact on the random forest's model than all the other variables. Hosts with more listings must be more experienced and may have better practices for providing users a more desirable experience. This idea is supported by the fact that $\it{host\_is\_superhost}$ is the second most importance variable according to our model.
 
 # Analysis of Results
 
+The performance, on both the regression and classification task, of our predictor set
+was better than baseline models on average. That being said, there were some noticable patterns 
+in the missclassified listings that are worth mentioning. To begin with, over 95% of the training
+points missclassified had "Real Bed" for $\it{bed\_type}$. Moreover, half of the missclassified 
+points were "Entire home/apt" or "Private room". Based on the importance plots from the random 
+forest models, we saw that the geographical features were heavily relied upon, but characteristics
+about the perks of the venue itself were not adequately used. This was, in part, a result of how
+the $\it{amenities}$ column was preprocessed. Features indicating the presence of desirable 
+ammenities such as a gym, gatekeeper, free breakfast, or even a pool could have been included to 
+provide a more holistic look at the listing.
+
+With more time, there are a number of other steps that can be taken. In particular, the data was 
+skewed and contained high outliers in multiple categories. High outliers existed in several numeric variables in the
+dataset, specifically $\it{price}$, $\it{cleaning\_fee}$, $\it{maximum\_nights}$ and $\it{accommodates}$. An example of a
+possible outlier that could skew price would be a mansion in an expensive neighborhood that
+could accommodate a high number of guests, and would have a corresponding high cleaning
+fee. More time dedicated to filtering the data and making it as granular and useful as possible
+would surely improve our model building and selection process, and reduce mean squared
+error and misclassification error respectively.
+
+Another area for improvement is feature engineering and selection. The features that we
+created to create context for our latitude/longitude coordinates using distance measures, and
+the data cleaning done on the amenities column did very well in our final models, and they
+were some of the largest contributors to the fit and resulting predictions on the test set. To that
+end, exploring logical correlations could produce a richer feature set. For example, higher
+priced listings tend to be more desirable, have more amenities and a better location. Exploring
+the time of the year when listings are most popular could be fruitful. It’s also important to note
+that the data we have is from the host’s perspective, including data on the user could further
+enrich the dataset and possibly provide a more complete picture as to what influences price
+and review score.

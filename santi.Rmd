@@ -77,16 +77,16 @@ amenities = sapply(review.pre$amenities, FUN=function(x) {
   tolower(newS)
 })
 
-# amenitiesPost = sapply(review.post$amenities, FUN=function(x) {
-#   # some function that just splits up all the words in each row of amenities
-#   s = toString(x)
-#   s = strsplit(s[[1]],",")
-#   newS = str_replace(s[[1]],'\\{',"")
-#   newS = str_replace(n                                                                                                                                                                                                                                                           newS,'\\}',"")
-#   newS = str_replace(newS,'\"',"")
-#   newS = str_replace(newS,'\"',"")
-#   tolower(newS)
-# })
+amenitiesPost = sapply(review.post$amenities, FUN=function(x) {
+  # some function that just splits up all the words in each row of amenities
+  s = toString(x)
+  s = strsplit(s[[1]],",")
+  newS = str_replace(s[[1]],'\\{',"")
+  newS = str_replace(newS,'\\}',"")
+  newS = str_replace(newS,'\"',"")
+  newS = str_replace(newS,'\"',"")
+  tolower(newS)
+})
 
 num.amenities = c()
 for(i in 1:length(review.pre$amenities)) {
@@ -220,48 +220,51 @@ library(gbm)
 library(rpart)
 library(adabag)
 library(ada)
-rand.fit = randomForest(review_scores_rating~., data = trainR, ntree = 500, na.action=na.exclude)
-rand.predictions = predict(rand.fit, newdata = testR)
-nas = which(is.na(rand.predictions))
-misClasificError <- mean(rand.predictions[-nas] != testR$review_scores_rating[-nas])
-print(paste('Accuracy',1-misClasificError))
+colnames(trainR)
+rand.fit = randomForest(review_scores_rating~., data = trainR[,-c(1,2)], ntree = 500, na.action=na.exclude)
+varImpPlot(rand.fit, sort = T, main = "Training Model Top 15 Variable Importance", n.var = 15)
 
-review.pre = review.pre[, -c(9,19)]
-review.post = review.post[, -c(9,19)]
-common <- intersect(names(review.pre), names(review.post))
-for (p in common) { 
-  if (class(review.pre[[p]]) == "factor") { 
-    levels(review.post[[p]]) <- levels(review.pre[[p]]) 
-  } 
-} 
-rand.fit.test = randomForest(review_scores_rating~., data = review.pre, ntree = 500, mtry = 4)
-#res = tuneRF(x = subset(review.pre, select = -review_scores_rating), y = review.pre$review_scores_rating, ntreeTry=500, doBest = T)
-rf.c = predict(rand.fit.test, newdata = review.post[, -22])
+# rand.predictions = predict(rand.fit, newdata = testR)
+# nas = which(is.na(rand.predictions))
+# misClasificError <- mean(rand.predictions != testR$review_scores_rating[-nas])
+# print(paste('Accuracy',1-misClasificError))
 
-#rand.predictions.test.fit = predict(rand.fit.test, newdata = review.post[, -22])
-
-nfold = 5
-samp <- sample(rep(1:nfold, ceiling(nrow(review.pre)/nfold))[1:nrow(review.pre)])
-misclass = c()
-for(k in 1:nfold) {
-  testd <- review.pre[which(samp==k), ] 
-  traind <- review.pre[-which(samp==k), ] 
-  rf = randomForest(review_scores_rating~., data = traind, ntree = 500, mtry = 4)
-  rf.pred = predict(rf, newdata = testd)
-  misclass[k] = mean(rf.pred != testd$review_scores_rating)
-}
-misclass = mean(misclass)
-
-samp.price = sample(rep(1:nfold, ceiling(nrow(price.pre)/nfold))[1:nrow(price.pre)])
-mse = c()
-for(k in 1:nfold) {
-  testd <- price.pre[which(samp.price==k), ] 
-  traind <- price.pre[-which(samp.price==k), ] 
-  rf.reg = randomForest(price~., data = traind, ntree = 500)
-  rf.reg.pred = predict(rf.reg, newdata = testd)
-  mse[k] = mean((rf.reg.pred - testd$price)^2)
-}
-mse = mean(mse)
+# review.pre = review.pre[, -c(9,19)]
+# review.post = review.post[, -c(9,19)]
+# common <- intersect(names(review.pre), names(review.post))
+# for (p in common) { 
+#   if (class(review.pre[[p]]) == "factor") { 
+#     levels(review.post[[p]]) <- levels(review.pre[[p]]) 
+#   } 
+# } 
+# rand.fit.test = randomForest(review_scores_rating~., data = review.pre, ntree = 500, mtry = 4)
+# #res = tuneRF(x = subset(review.pre, select = -review_scores_rating), y = review.pre$review_scores_rating, ntreeTry=500, doBest = T)
+# rf.c = predict(rand.fit.test, newdata = review.post[, -22])
+# 
+# #rand.predictions.test.fit = predict(rand.fit.test, newdata = review.post[, -22])
+# 
+# nfold = 5
+# samp <- sample(rep(1:nfold, ceiling(nrow(review.pre)/nfold))[1:nrow(review.pre)])
+# misclass = c()
+# for(k in 1:nfold) {
+#   testd <- review.pre[which(samp==k), ] 
+#   traind <- review.pre[-which(samp==k), ] 
+#   rf = randomForest(review_scores_rating~., data = traind, ntree = 500, mtry = 4)
+#   rf.pred = predict(rf, newdata = testd)
+#   misclass[k] = mean(rf.pred != testd$review_scores_rating)
+# }
+# misclass = mean(misclass)
+# 
+# samp.price = sample(rep(1:nfold, ceiling(nrow(price.pre)/nfold))[1:nrow(price.pre)])
+# mse = c()
+# for(k in 1:nfold) {
+#   testd <- price.pre[which(samp.price==k), ] 
+#   traind <- price.pre[-which(samp.price==k), ] 
+#   rf.reg = randomForest(price~., data = traind, ntree = 500)
+#   rf.reg.pred = predict(rf.reg, newdata = testd)
+#   mse[k] = mean((rf.reg.pred - testd$price)^2)
+# }
+# mse = mean(mse)
 #misclass = mean(rand.predictions.test.fit != review.pre$review_scores_rating)
 ```
 
@@ -293,6 +296,9 @@ save(list=c("price.guesses","price.mse","review.guesses","review.acc", "team.nam
 # print(confusionMatrix(data = r$preds,
 #                       reference = r$review_scores_rating,
 #                       positive = '0'))
+
+rand.train = randomForest(price ~., data = train, ntree = 500)
+varImpPlot(rand.train, sort = T, main = "Training Model Top 15 Variable Importance", n.var = 15)
 ```
 
 ## SVM

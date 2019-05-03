@@ -195,6 +195,15 @@ rand.fit = randomForest(price~., data = train.lm, ntree = 500)
 rand.predictions = predict(rand.fit, newdata = test.lm)
 mse.rand = mean((test.lm$price - rand.predictions)^2)
 mse.rand
+
+plot(rand.fit)
+varImpPlot(rand.fit,
+           sort = T,
+           n.var=15,
+           main="Top 15 - Variable Importance")
+
+rand.train = randomForest(price~., data = train, ntree = 500)
+varImpPlot(rand.train, sort = T, main = "Training Model Top 15 Variable Importance", n.var = 15)
 ```
 
 ## Neural Net ## 
