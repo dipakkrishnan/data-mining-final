@@ -1,0 +1,49 @@
+---
+title: "Extra Credit"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data Load ## 
+
+```{r}
+boston = read.csv("/Users/dipakkrishnan/Downloads/listings-3.csv")
+colnames(review)
+boston.reduced = subset(boston, select = c("id","host_response_time", "host_response_rate", "host_is_superhost", "host_identity_verified", "host_listings_count", "neighbourhood_group_cleansed", "property_type", "room_type", "latitude", "longitude", "guests_included", "accommodates",  "bathrooms", "bedrooms", "beds",  "amenities",  "price" , "cleaning_fee", "minimum_nights", "maximum_nights", "instant_bookable", "cancellation_policy", "review_scores_rating"))
+```
+
+## Discretize Review Scores Rating ## 
+
+```{r}
+boston.reduced$review_scores_rating = as.numeric(boston.reduced$review_scores_rating)
+boston.reduced$review_scores_rating[is.na(boston.reduced$review_scores_rating)] = 0
+
+```
+
+
+## Data Preprocessing ## 
+
+```{r}
+boston.reduced$host_is_superhost = as.factor(as.numeric(boston.reduced$host_is_superhost) -1)
+boston.reduced$host_identity_verified = as.factor(as.numeric(boston.reduced$host_identity_verified) -1)
+boston.reduced$instant_bookable = as.factor(as.numeric(boston.reduced$instant_bookable) -1)
+boston.reduced$host_response_rate = as.numeric(sub("%", "", boston.reduced$host_response_rate)) / 100
+boston.reduced$host_response_time = as.factor(unclass(boston.reduced$host_response_time) -1)
+boston.reduced$cleaning_fee = as.numeric(sub("$", "", boston.reduced$cleaning_fee, fixed = T))
+boston.reduced$price = as.numeric(gsub("$", "", boston.reduced$price, fixed = T))
+boston.reduced$cancellation_policy = as.factor(as.numeric(boston.reduced$cancellation_policy))
+boston.reduced$review_scores_rating = as.factor(as.numeric(boston.reduced$review_scores_rating))
+
+boston.reduced$cleaning_fee[is.na(boston.reduced$cleaning_fee)] = 0
+boston.reduced$price[is.na(boston.reduced$price)] = 0
+boston.reduced$host_listings_count[is.na(boston.reduced$host_listings_count)] = 0 
+boston.reduced$bathrooms[is.na(boston.reduced$bathrooms)] = 0
+boston.reduced$bedrooms[is.na(boston.reduced$bedrooms)] = 0
+boston.reduced$beds[is.na(boston.reduced$beds)] = 0
+boston.reduced$neighbourhood_group_cleansed = NULL
+boston.reduced$host_response_rate = NULL
+sum(is.na(boston.reduced))
+```
