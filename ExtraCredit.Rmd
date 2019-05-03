@@ -10,16 +10,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Data Load ## 
 
 ```{r}
-boston = read.csv("listings.csv")
+boston = read.csv("/Users/dipakkrishnan/Downloads/listings-3.csv")
+colnames(review)
 boston.reduced = subset(boston, select = c("id","host_response_time", "host_response_rate", "host_is_superhost", "host_identity_verified", "host_listings_count", "neighbourhood_group_cleansed", "property_type", "room_type", "latitude", "longitude", "guests_included", "accommodates",  "bathrooms", "bedrooms", "beds",  "amenities",  "price" , "cleaning_fee", "minimum_nights", "maximum_nights", "instant_bookable", "cancellation_policy", "review_scores_rating"))
 ```
 
-## Discretize Review Scores Rating ## 
 
-```{r}
-boston.reduced$review_scores_rating = as.numeric(boston.reduced$review_scores_rating)
-boston.reduced$review_scores_rating[is.na(boston.reduced$review_scores_rating)] = 0
-```
 
 
 ## Data Preprocessing ## 
@@ -43,16 +39,98 @@ boston.reduced$bedrooms[is.na(boston.reduced$bedrooms)] = 0
 boston.reduced$beds[is.na(boston.reduced$beds)] = 0
 boston.reduced$neighbourhood_group_cleansed = NULL
 boston.reduced$host_response_rate = NULL
-# sum(is.na(boston.reduced))
 ```
+
 
 ```{r}
 greater = which(boston.reduced$review_scores_rating >= 95) # as 1
 less = which(boston.reduced$review_scores_rating <= 90) # as 0
 indices = c(greater,less)
 boston.reduced = boston.reduced[indices,]
-
 boston.reduced$review_scores_rating = ifelse(boston.reduced$review_scores_rating <= 90,0,1)
-head(boston.reduced$review_scores_rating)
+
+sum(is.na(boston.reduced))
+head(boston.reduced)
 ```
+
+## Amenities ## 
+
+
+```{r}
+# library: stringr
+library(stringr)
+amenities = sapply(boston.reduced$amenities, FUN=function(x) {
+  # some function that just splits up all the words in each row of amenities
+  s = toString(x)
+  s = strsplit(s[[1]],",")
+  newS = str_replace(s[[1]],'\\{',"")
+  newS = str_replace(newS,'\\}',"")
+  newS = str_replace(newS,'\"',"")
+  newS = str_replace(newS,'\"',"")
+  tolower(newS)
+})
+
+
+num.amenities = c()
+for(i in 1:length(boston.reduced$amenities)) {
+  num.amenities[i] = length(amenities[[i]])
+}
+boston.reduced$amenities = NULL
+boston.reduced$property_type = NULL
+boston.reduced$num_amenities = num.amenities
+```
+
+
+## Distance Measure ## 
+
+```{r}
+library(geosphere)
+fenway.lat = 42.3467 ; fenway.long = -71.0972
+fanueil.lat = 42.3603 ; fanueil.long = -71.0547
+freedom.lat = 42.3560 ; freedom.long = -71.0545
+
+fenway.dist = c()
+fanueil.dist = c()
+freedom.dist = c()
+for(i in 1:length(boston.reduced$latitude)) {
+  fenway.dist[i] = distm(c(fenway.long, fenway.lat), c(boston.reduced$longitude[i], boston.reduced$latitude[i]), fun = distGeo) / 1609.344
+  fanueil.dist[i] = distm(c(fanueil.long, fanueil.lat), c(boston.reduced$longitude[i], boston.reduced$latitude[i]), fun = distGeo) / 1609.344
+  freedom.dist[i] = distm(c(freedom.long, freedom.lat), c(boston.reduced$longitude[i], boston.reduced$latitude[i]), fun = distGeo) / 1609.344
+}
+boston.reduced$fenway_dist = fenway.dist ; boston.reduced$fanueil_dist = fanueil.dist ; boston.reduced$freedom_dist = freedom.dist 
+boston.reduced = boston.reduced[-1785,]
+```
+
+## Train Test split ## 
+
+```{r}
+nR <- nrow(boston.reduced)
+boston.review <- boston.reduced[sample(nR), ]
+train.indicesR <- 1:round(0.7 * nR)
+trainR <- boston.reduced[train.indicesR,]
+test.indicesR <- (round(0.7 * nR) + 1):nR
+testR <- boston.reduced[test.indicesR,]
+```
+
+
+## MLR ## 
+
+```{r}
+mlr.bos = lm(price~., data=trainR)
+summary(mlr.bos)
+samp.price.bos = sample(rep(1:nfold, ceiling(nrow(boston.reduced)/nfold))[1:nrow(boston.reduced)])
+mse = c()
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+  lm.reg = lm(price~., data = traind)
+  lm.reg.pred = predict(lm.reg, newdata = testd)
+  mse[k] = mean((lm.reg.pred - testd$price)^2)
+}
+mse = mean(mse)
+```
+
+
+
+
 
