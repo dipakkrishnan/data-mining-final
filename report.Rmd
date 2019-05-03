@@ -237,23 +237,30 @@ price dataset allocated to training and 25% allocated to a validation test set. 
 linear regression model, regressing price against all the variables in our final,
 processed training set. 
 \begin{equation}
-lm(price ~., data = review.train)
+lm(price \sim., data = price.train)
 \end{equation}
 The goodness of the fit was evaluated in two ways: against our
 regression assumptions and with cross-validated mean squared error. The residuals vs fitted
-values plot of the fitted regression object showed a cluster of points around 0 with high
+values plot of the fitted regression object, found below, showed a cluster of points around 0 with high
 outliers, potential influential points, and an uneven distribution. Our baseline linear model was
 not optimal for the dataset, and we inferred another technique could produce a better fit. The
 cross-validated error for the linear model using k-fold cross validation was around 11,000. ##
 check this number ##
+
+```{r,echo=FALSE}
+train.lm = train[, -c(10, 19)]
+test.lm = test[, -c(10, 19)]
+mlr = lm(price~., data = train.lm)
+plot(mlr$residuals ~ mlr$fitted.values,xlab="Fitted Values",ylab = "Residuals", main = "Residuals vs Fitted Values")
+```
 
 With our baseline in hand, we logically assumed that it’s possible the fit could be
 improved by improving the bias-variance tradeoff we were dealing with. To make the model
 more generalizable and get a sense for which predictors were important, we fit a ridge and
 lasso model on our training set, where equations 2 and 3 represent ridge and lasso respectively.
 \begin{align}
-cv.glmnet(model.matrix(price~., data = review.train), review.train.price, alpha = 0) \\
-cv.glmnet(model.matrix(price~., data = review.train), review.train.price, alpha = 1) 
+cv.glmnet(model.matrix(price \sim., data = price.train), price.train.price, alpha = 0) \\
+cv.glmnet(model.matrix(price \sim., data = price.train), price.train.price, alpha = 1) 
 \end{align}
 We used cross validation techniques to establish the optimal lambda penalty value for both the ridge and lasso
 regression models above. Our cross-validated mean squared errors for both ridge and lasso were
@@ -263,7 +270,7 @@ and numeric predictors, with some outliers in the data, trees and random forests
 robust measure that does not lose predictive power to high outliers and non-linearity. We also fit a
 normal decision tree, and a pruned version of the tree, shown below.
 \begin{align}
-tree = rpart(price~., data = review.train) \\
+tree = rpart(price \sim., data = price.train) \\
 pruned.tree = prune(tree, cp = 0.019)
 \end{align}
 From the plot of the decision tree we chose a cp parameter that minimized relative error. The cross validated mean
@@ -277,7 +284,7 @@ numeric and categorical predictors and generally produce low bias, moderate vari
 
 We fit a random forest with 500 trees as a baseline on our training set.
 \begin{align}
-randomForest(price~., data = review.train, ntree = 500)
+randomForest(price \sim., data = price.train, ntree = 500)
 \end{align}
 Random forests had the lowest cross-validated mean squared error around 4000. The
 predictions that the random forest produced were the closest to the price of the listings in our

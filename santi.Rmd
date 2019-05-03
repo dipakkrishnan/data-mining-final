@@ -21,6 +21,14 @@ library(geosphere)
 library(e1071)
 ```
 
+```{r}
+price = read.csv("price.csv")
+review = read.csv("review.csv")
+price.t = read.csv("price_test.csv")
+review.t = read.csv("review_test.csv")
+```
+
+
 # Data Pre-Processing
 
 ```{r}
@@ -52,7 +60,6 @@ review.post$cleaning_fee[is.na(review.post$cleaning_fee)] = 0
 review.post$price[is.na(review.post$price)] = 0
 
 dim(review.pre) ; dim(review.post)
-
 ```
 
 ## Amenities
@@ -70,16 +77,16 @@ amenities = sapply(review.pre$amenities, FUN=function(x) {
   tolower(newS)
 })
 
-amenitiesPost = sapply(review.post$amenities, FUN=function(x) {
-  # some function that just splits up all the words in each row of amenities
-  s = toString(x)
-  s = strsplit(s[[1]],",")
-  newS = str_replace(s[[1]],'\\{',"")
-  newS = str_replace(newS,'\\}',"")
-  newS = str_replace(newS,'\"',"")
-  newS = str_replace(newS,'\"',"")
-  tolower(newS)
-})
+# amenitiesPost = sapply(review.post$amenities, FUN=function(x) {
+#   # some function that just splits up all the words in each row of amenities
+#   s = toString(x)
+#   s = strsplit(s[[1]],",")
+#   newS = str_replace(s[[1]],'\\{',"")
+#   newS = str_replace(n                                                                                                                                                                                                                                                           newS,'\\}',"")
+#   newS = str_replace(newS,'\"',"")
+#   newS = str_replace(newS,'\"',"")
+#   tolower(newS)
+# })
 
 num.amenities = c()
 for(i in 1:length(review.pre$amenities)) {
@@ -182,6 +189,16 @@ review.post <- review.post[-c(9,18,19)]
 
 # Classification
 
+## NAIVE BAYES
+
+```{r}
+NB = naiveBayes(review_scores_rating ~ ., data = trainR)
+predictions.nb = predict(NB, newdata = testR)
+mse.nb = mean((testR$review_scores_rating != predictions.nb)^2) 
+1 - mse.nb
+```
+
+
 ## Logistic Regression
 
 ```{r}
@@ -189,20 +206,10 @@ logRegMdl = glm(review_scores_rating ~., data = trainR, family = "binomial")
 logReg.results <- predict(logRegMdl,newdata=testR,type='response')
 logReg.results <- ifelse(logReg.results > 0.5,1,0)
 nas = which(is.na(logReg.results))
-misClasificError <- mean(logReg.results[-nas] != testR$review_scores_rating[-nas])
+misClasificError <- mean(logReg.results != testR$review_scores_rating)
 print(paste('Accuracy',1-misClasificError))
 
-
-###
-
-
-# logRegMdl = glm(review_scores_rating ~., data = review.pre, family = "binomial")
-
-# logReg.results <- predict(logRegMdl,newdata=review.pre,type='response')
-# logReg.results <- ifelse(logReg.results > 0.5,1,0)
-# nas = which(is.na(logReg.results))
-# misClasificError <- mean(logReg.results[-nas] != review.pre$review_scores_rating[-nas])
-# print(paste('Accuracy',1-misClasificError))
+plot(logRegMdl)
 ```
 
 ## Random Forest and CV ## 
@@ -340,7 +347,6 @@ misClasificError <- mean(pruned.tree.predictions != testR$review_scores_rating)
 print(paste('Accuracy',1-misClasificError))
 
 ```
-
 
 ## LDA
 
