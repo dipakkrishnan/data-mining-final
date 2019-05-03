@@ -299,10 +299,19 @@ variable.
 ![](importance.png)
 
 The most powerful predictors for price in terms
-of prediction strength were $\it{cleaning\_fee}$ and $\it{host\_listings\_count}$. Interestingly, the variables we
-added for location mapping were among the best predictors in the feature set. Our model
+of prediction strength were $\it{cleaning\_fee}$ and $\it{host\_listings\_count}$. Interestingly, the variables we added for location mapping were among the best predictors in the feature set. Our model
 selection process led us to choose our random forest model as the model that best explains
 the test data.
+
+The table below summarizes the cross-validated MSE of each of the models tested.
+
+```{r,echo=FALSE}
+library(knitr)
+models = c("Linear","Lasso", "Ridge", "Tree", "Pruned Tree", "Random Forest")
+mse = c(9188,8940,8942,6572,6999,4005)
+kable(cbind(models,mse))
+```
+
 
 ## Classification Model Selection
 
@@ -375,6 +384,15 @@ fit.
 ![](imp.png)
 
 The most impactful features for classifying $\it{review\_scores\_rating}$ were $\it{host\_listings\_count}$ and $\it{host\_is\_superhost}$. For classifying the desirability of a listing, our engineered features performed very well, but $\it{host\_listings\_count}$ surprisingly had twice as much impact on the random forest's model than all the other variables. Hosts with more listings must be more experienced and may have better practices for providing users a more desirable experience. This idea is supported by the fact that $\it{host\_is\_superhost}$ is the second most importance variable according to our model.
+
+The table below summarizes the cross-validated missclassification rate of each of the models tested.
+
+```{r,echo=FALSE}
+library(knitr)
+models = c("Naive Bayes","Logistic Regression", "Linear SVM", "Polynomial SVM", "Radial SVM", "ADA Boost", "Random Forest")
+missclassification = c(17.8,12.8,12.1,12.1,12.0,11.7,11.4)
+kable(cbind(models,mse))
+```
 
 # Analysis of Results
 
