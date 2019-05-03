@@ -78,6 +78,7 @@ for(i in 1:length(boston.reduced$amenities)) {
 boston.reduced$amenities = NULL
 boston.reduced$property_type = NULL
 boston.reduced$num_amenities = num.amenities
+boston.reduced$review_scores_rating = as.factor(boston.reduced$review_scores_rating)
 ```
 
 
@@ -107,9 +108,9 @@ boston.reduced = boston.reduced[-1785,]
 nR <- nrow(boston.reduced)
 boston.review <- boston.reduced[sample(nR), ]
 train.indicesR <- 1:round(0.7 * nR)
-trainR <- boston.reduced[train.indicesR,]
+trainR <- boston.review[train.indicesR,]
 test.indicesR <- (round(0.7 * nR) + 1):nR
-testR <- boston.reduced[test.indicesR,]
+testR <- boston.review[test.indicesR,]
 ```
 
 
@@ -129,6 +130,211 @@ for(k in 1:nfold) {
 }
 mse = mean(mse)
 ```
+
+## Trees ## 
+
+
+```{r}
+library(rpart)
+tree.ec = rpart(price~., data = trainR)
+plotcp(tree.ec)
+pruned.ec = prune(tree.ec, cp = 0.024)
+
+mse.tree.ec= c()
+mse.prune.ec = c()
+
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+  
+  tree = rpart(price~., data = traind)
+  pruned.tree = prune(tree, cp = 0.024)
+    
+  tree.predictions = predict(tree, testd)
+  pruned.tree.predictions = predict(pruned.tree, testd)
+  
+  mse.tree.ec[k] = mean((tree.predictions - testd$price)^2)
+  mse.prune.ec[k] = mean((pruned.tree.predictions - testd$price)^2)
+}
+mse.tree.ec = mean(mse.tree.ec)
+mse.prune.ec = mean(mse.prune.ec)
+
+```
+
+## Random Forest ## 
+
+```{r}
+library(randomForest)
+rf.ec = randomForest(price~., data = trainR, ntree = 500)
+varImpPlot(rf.ec, sort = T, n.var = 15, main = "Top 15 Variables Training By Importance")
+
+mse.tree.rf = c()
+
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+  
+  rf = randomForest(price~., data = trainR, ntree = 500)
+
+  rf.predictions = predict(rf, newdata = testd)
+  
+  mse.tree.rf[k] = mean((rf.predictions - testd$price)^2)
+}
+
+mse.tree.rf = mean(mse.tree.rf)
+predictions.rf = predict(rf.ec, newdata = testR)
+```
+
+
+## Naive Bayes ## 
+
+```{r}
+library(e1071)
+naive = naiveBayes(review_scores_rating~., data = trainR)
+
+misclass.naive = c()
+
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+  
+  naive = naiveBayes(review_scores_rating~., data = traind)
+
+  naive.predictions = predict(naive, newdata = testd)
+  
+  misclass.naive[k] = mean(naive.predictions != as.factor(testd$review_scores_rating))
+}
+
+misclass.naive = mean(misclass.naive)
+```
+
+## Log Reg ## 
+
+```{r}
+log.reg = glm(review_scores_rating~., data = trainR, family="binomial")
+
+misclass.log = c()
+
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+    
+  log.mod = glm(review_scores_rating~., data = traind, family="binomial")
+
+  log.predictions = predict(log.mod, newdata = testd)
+  
+  misclass.log[k] = mean(log.predictions != as.factor(testd$review_scores_rating))
+}
+misclass.log = mean(misclass.log)
+```
+
+
+## SVM Linear ## 
+
+```{r}
+library(e1071)
+
+svm.misclass = c()
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+  
+  svm = svm(review_scores_rating~., data = traind, kernel = "linear")
+
+  svm.predictions = predict(svm, newdata = testd)
+  
+  svm.misclass[k] = mean(svm.predictions != as.factor(testd$review_scores_rating))
+}
+
+svm.misclass = mean(svm.misclass)
+```
+
+## SVM Poly ## 
+
+```{r}
+library(e1071)
+
+svm.misclass.poly = c()
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+  
+  svm = svm(review_scores_rating~., data = traind, kernel = "polynomial")
+
+  svm.predictions = predict(svm, newdata = testd)
+  
+  svm.misclass.poly[k] = mean(svm.predictions != as.factor(testd$review_scores_rating))
+}
+
+svm.misclass.poly = mean(svm.misclass.poly)
+```
+
+
+
+## SVM Radial ##
+
+```{r}
+library(e1071)
+
+svm.misclass.radial = c()
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+  
+  svm = svm(review_scores_rating~., data = traind, kernel = "radial")
+
+  svm.predictions = predict(svm, newdata = testd)
+  
+  svm.misclass.radial[k] = mean(svm.predictions != as.factor(testd$review_scores_rating))
+}
+
+svm.misclass.radial = mean(svm.misclass.radial)
+```
+
+## Boosting ## 
+
+```{r}
+
+
+boost.misclass = c()
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+  
+  boost = boosting(review_scores_rating~., data = traind, mfinal = 100, coeflearn = "Freund")
+
+  boost.pred = predict.boosting(boost, newdata = testd)
+  
+  boost.misclass[k] = boost.pred$error
+}
+boost.misclass = mean(boost.misclass)
+
+
+```
+
+
+## Random Forest ## 
+
+```{r}
+
+rf.misclass = c()
+
+for(k in 1:nfold) {
+  testd <- boston.reduced[which(samp.price.bos==k), ]
+  traind <- boston.reduced[-which(samp.price.bos==k), ]
+  
+  rf = randomForest(review_scores_rating~., data = traind, ntrees = 500)
+
+  rf.pred = predict(rf, newdata = testd)
+  
+  rf.misclass[k] = mean(rf.pred != as.factor(testd$review_scores_rating))
+}
+rf.misclass = mean(rf.misclass)
+
+rf.mod = randomForest(review_scores_rating~., data = trainR, ntrees = 500)
+varImpPlot(rf.mod, sort = T, n.var = 15, main = "Top 15 Variables Training By Importance")
+```
+
 
 
 
