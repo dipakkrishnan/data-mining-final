@@ -10,8 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Data Load ## 
 
 ```{r}
-boston = read.csv("listings-3.csv")
-colnames(review)
+boston = read.csv("listings.csv")
 boston.reduced = subset(boston, select = c("id","host_response_time", "host_response_rate", "host_is_superhost", "host_identity_verified", "host_listings_count", "neighbourhood_group_cleansed", "property_type", "room_type", "latitude", "longitude", "guests_included", "accommodates",  "bathrooms", "bedrooms", "beds",  "amenities",  "price" , "cleaning_fee", "minimum_nights", "maximum_nights", "instant_bookable", "cancellation_policy", "review_scores_rating"))
 ```
 
@@ -20,7 +19,6 @@ boston.reduced = subset(boston, select = c("id","host_response_time", "host_resp
 ```{r}
 boston.reduced$review_scores_rating = as.numeric(boston.reduced$review_scores_rating)
 boston.reduced$review_scores_rating[is.na(boston.reduced$review_scores_rating)] = 0
-
 ```
 
 
@@ -35,7 +33,7 @@ boston.reduced$host_response_time = as.factor(unclass(boston.reduced$host_respon
 boston.reduced$cleaning_fee = as.numeric(sub("$", "", boston.reduced$cleaning_fee, fixed = T))
 boston.reduced$price = as.numeric(gsub("$", "", boston.reduced$price, fixed = T))
 boston.reduced$cancellation_policy = as.factor(as.numeric(boston.reduced$cancellation_policy))
-boston.reduced$review_scores_rating = as.factor(as.numeric(boston.reduced$review_scores_rating))
+boston.reduced$review_scores_rating = as.numeric(boston.reduced$review_scores_rating)
 
 boston.reduced$cleaning_fee[is.na(boston.reduced$cleaning_fee)] = 0
 boston.reduced$price[is.na(boston.reduced$price)] = 0
@@ -45,5 +43,16 @@ boston.reduced$bedrooms[is.na(boston.reduced$bedrooms)] = 0
 boston.reduced$beds[is.na(boston.reduced$beds)] = 0
 boston.reduced$neighbourhood_group_cleansed = NULL
 boston.reduced$host_response_rate = NULL
-sum(is.na(boston.reduced))
+# sum(is.na(boston.reduced))
 ```
+
+```{r}
+greater = which(boston.reduced$review_scores_rating >= 95) # as 1
+less = which(boston.reduced$review_scores_rating <= 90) # as 0
+indices = c(greater,less)
+boston.reduced = boston.reduced[indices,]
+
+boston.reduced$review_scores_rating = ifelse(boston.reduced$review_scores_rating <= 90,0,1)
+head(boston.reduced$review_scores_rating)
+```
+
