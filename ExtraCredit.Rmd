@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Data Load ## 
 
 ```{r}
-boston = read.csv("/Users/dipakkrishnan/Downloads/listings-3.csv")
+boston = read.csv("listings-3.csv")
 colnames(review)
 boston.reduced = subset(boston, select = c("id","host_response_time", "host_response_rate", "host_is_superhost", "host_identity_verified", "host_listings_count", "neighbourhood_group_cleansed", "property_type", "room_type", "latitude", "longitude", "guests_included", "accommodates",  "bathrooms", "bedrooms", "beds",  "amenities",  "price" , "cleaning_fee", "minimum_nights", "maximum_nights", "instant_bookable", "cancellation_policy", "review_scores_rating"))
 ```
