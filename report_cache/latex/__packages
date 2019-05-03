@@ -1,3 +1,5 @@
 base
 stringr
 plyr
+knitr
+geosphere

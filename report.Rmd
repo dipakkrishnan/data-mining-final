@@ -106,6 +106,54 @@ testR <- sample.review[test.indices.rev, ]
 
 price.pre = price.pre[,-c(11,19)]
 review.pre = review.pre[,-c(10,19)]
+
+###
+
+library(geosphere)
+pike.place.lat = 47.6097 ; pike.place.long = -122.3422
+space.needle.lat = 47.6205 ; space.needle.long = -122.3493
+downtown.lat = 47.6050 ; downtown.long = -122.3344 
+gum.wall.lat = 47.6084 ; gum.wall.long = -122.3404
+great.wheel.lat = 47.6062 ; great.wheel.long = -122.3425
+
+pike.dist = c()
+space.dist = c()
+downtown.dist = c()
+gum.dist = c()
+wheel.dist = c()
+
+pike.dist.post = c()
+space.dist.post = c()
+downtown.dist.post = c()
+gum.dist.post = c()
+wheel.dist.post = c()
+for(i in 1:length(price.pre$latitude)) {
+  pike.dist[i] = distm(c(pike.place.long, pike.place.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+  space.dist[i] = distm(c(space.needle.long, space.needle.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+  downtown.dist[i] = distm(c(downtown.long, downtown.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+  gum.dist[i] = distm(c(gum.wall.long, gum.wall.lat), c(price.pre $longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+  wheel.dist[i] = distm(c(great.wheel.long, great.wheel.lat), c(price.pre$longitude[i], price.pre$latitude[i]), fun = distGeo) / 1609.344
+}
+
+for(i in 1:length(review.pre$latitude)) {
+  pike.dist.post[i] = distm(c(pike.place.long, pike.place.lat), c(review.pre$longitude[i], review.pre$latitude[i]), 
+                            fun = distGeo) / 1609.344
+  space.dist.post[i] = distm(c(space.needle.long, space.needle.lat), c(review.pre$longitude[i], review.pre$latitude[i]), 
+                             fun = distGeo) / 1609.344
+  downtown.dist.post[i] = distm(c(downtown.long, downtown.lat), c(review.pre$longitude[i], review.pre$latitude[i]), 
+                                fun = distGeo) / 1609.344
+  gum.dist.post[i] = distm(c(gum.wall.long, gum.wall.lat), c(review.pre$longitude[i], review.pre$latitude[i]), 
+                           fun = distGeo) / 1609.344
+  wheel.dist.post[i] = distm(c(great.wheel.long, great.wheel.lat), c(review.pre$longitude[i], review.pre$latitude[i]), 
+                             fun = distGeo) / 1609.344
+}
+
+review.pre$pike_dist = pike.dist.post ; review.pre$space_dist = space.dist.post
+review.pre$downtown_dist = downtown.dist.post ; review.pre$gum_dist = gum.dist.post
+review.pre$wheel_dist = wheel.dist.post
+price.pre$pike_dist = pike.dist ; price.pre$space_dist = space.dist
+price.pre$downtown_dist = downtown.dist ; price.pre$gum_dist = gum.dist
+price.pre$wheel_dist = wheel.dist
 ```
 
 # Introduction
@@ -126,58 +174,53 @@ to 0, meaning that there was no price or cleaning fee for a given listing.
 
 # Exploration
 
-We begin by taking a look at the different neighborhoods in Seattle. The table below summarizes the average price per neighborhood and shows the relative proportion of the price of each neighborhood in both datasets. About 18% of the listings alone are located in Downtown Seattle. On average, the price per listing is about 60 dollars more expensive there than the overall average. Similarly, in Queen Anne, a notoriously expensive area in Seattle, the average price is about 30 dollars more expensive than the overall average. This difference in price hints at the importance of location for an Airbnb listing. 
+We begin by taking a look at the different neighborhoods in Seattle. The table below summarizes the top and bottom five average prices of listings in each neighborhood and its proportion over both datasets. We see that about 18% of the listings alone are located in Downtown Seattle. On average, the price per listing there is about 60 dollars more expensive than the overall average of about `r signif((mean(review.pre$price) + mean(price.pre$price)) / 2,3)` dollars. Note that in Queen Anne, a notoriously expensive area of Seattle, the average price is about 30 dollars more expensive than the overall average. This difference in price hints at the importance of location for an Airbnb listing. 
 
 ```{r}
-# for (i in 1:17) {
-#   p = which(price.pre$neighbourhood_group_cleansed == )
-#   r = which(review.pre$neighbourhood_group_cleansed == l)
-#   price.mean = mean(price.pre$price)
-#   review.mean = mean(review.pre$price)
-# }
-
 library(plyr)
+library(knitr)
 neighborhood.means = aggregate(price.pre[,"price"], list(price.pre$neighbourhood_group_cleansed), mean)
 n.means = aggregate(review.pre[,"price"], list(review.pre$neighbourhood_group_cleansed), mean)
-
-n = names(table(price.pre$neighbourhood_group_cleansed))
 prop = ddply(price.pre, .(neighbourhood_group_cleansed), summarize, prop = 100 * length(neighbourhood_group_cleansed) / nrow(price.pre))
+prop2 = ddply(review.pre, .(neighbourhood_group_cleansed), summarize, prop = 100 * length(neighbourhood_group_cleansed) / nrow(review.pre))
+a = cbind("mean price" = (neighborhood.means[,2] + n.means[,2]) / 2, "proportion" = (prop[,2]+prop2[,2])/2)
+rownames(a) = names(table(price.pre$neighbourhood_group_cleansed))
 
-a = cbind("mean price for price" = neighborhood.means[,2], "mean price for review" = n.means[,2], "proportion" = prop[,2])
-rownames(a) = n
-a
+top = a[c(7,13,4,10,3),]
+bottom = a[c(16,11,2,9,6),]
+kable(rbind(top,bottom))
 ```
 
 
 Each listing in the dataset included its unique latitude and longitude coordinates. To make the latitude and longitude measurements more useful and to improve the feature set, we tabulated the latitude/longitude coordinates of five Seattle places of interest: downtown, the Space Needle, the Gum Wall, Pike Place Market, and the Great Wheel. We wrote a script that calculated, for each listing, the distance between the listing and each of the five important locations in Seattle. This provided context to our task because it established how well-located certain listings were in comparison to others.
 
-More specifically, for both the regression and classification task, predicting price and classifying
-review_scores_rating in the best way required first looking at the data and evaluating the
+More specifically, for both the regression and classification task, predicting $\it{price}$ and classifying
+$\it{review\_scores\_rating}$ in the best way required first looking at the data and evaluating the
 feature set. Both datasets contained the same feature set with the review dataset containing an
-extra variable - our response review_scores_rating for the classification task.
+extra variable - our response $\it{review\_scores\_rating}$ for the classification task.
 
 We continued by looking for potentially problematic features in the dataset. In the price
-dataset, there were two: amenities and room_type. The amenities variable, for each listing, lists
+dataset, there were two: $\it{amenities}$ and $\it{room\_type}$. The $\it{amenities}$ variable, for each listing, lists
 the specific amenities that the listing has such as wifi access, TV availability and air
-conditioning. The room_type variable lists the type of the room offered by a given listing. These
-two features presented due to the number of levels of the factor variables.
+conditioning. The $\it{room\_type}$ variable lists the type of the room offered by a given listing. These
+two features presented probelmatic due to the number of levels of the factor variables.
 
-Each index in the amenities column contained a dictionary containing that specific
+Each index in the $\it{amenities}$ column contained a dictionary containing that specific
 listing’s amenities. Logically, we decided to test if the number of amenities for a given listing
-would affect its price instead of the amenities themselves. We parsed the amenities column
-and produced a new feature num_amenities that reported the total number of amenities for
+would affect its price instead of the amenities themselves. We parsed the $\it{amenities}$ column
+and produced a new feature $\it{num\_amenities}$ that reported the total number of amenities for
 each listing. We dropped the original amenities column from our analysis, and dropped the
 room type column as well from our analysis, as the ordering of its levels presented problems in
 the model creation process. We kept all other variables that were initially in the dataset in some
 form in our analysis.
 
 Finally, multiple features in the dataset required recoding. For instance, we refactored
-the host_is_superhost, host_identity_verified, and instant_bookable variables that were
+the $\it{host\_is\_superhost}$, $\it{host\_identity\_verified}$, and $\it{instant\_bookable}$ variables that were
 originally true/false variables coded as “t” and “f” into 0/1 variables with 1 coded as true. ##
-maybe line of code here and below ## The host_response_rate variable was a percentage in
-the original dataset, and was changed into a proportion. Two variables: host_response_time
-and cancellation_policy were refactored into categorical variables with numbers representing
-levels of factors instead of words. Our response variable price and the cleaning_fee variable
+maybe line of code here and below ## The $\it{host\_response\_rate}$ variable was a percentage in
+the original dataset, and was changed into a proportion. Two variables: $\it{host\_response\_time}$
+and $\it{cancellation\_policy}$  were refactored into categorical variables with numbers representing
+levels of factors instead of words. Our response variable $\it{price}$ and the $\it{cleaning\_fee}$ variable
 contained the “$” character before their values - this character was removed and the predictors
 were converted to numeric variables.
 
@@ -185,14 +228,18 @@ were converted to numeric variables.
 
 At this point, after processing and cleaning the data, we had a feature set that we felt
 good about. To move forward with the regression task, we knew that some variables had linear
-correlation with our response variable price, namely cleaning_fee and beds. It seemed that
+correlation with our response variable $\it{price}$, namely $\it{cleaning\_fee}$ and $\it{beds}$. It seemed that
 fitting a multiple linear regression model was a logical place to start as a baseline technique for
-prediction.
+prediction. 
 
 To begin, we split our price dataset into a training and test set with 75% of data in the
 price dataset allocated to training and 25% allocated to a validation test set. We fit a multiple
-linear regression model, ## code here ## regressing price against all the variables in our final,
-processed training set. The goodness of the fit was evaluated in two ways: against our
+linear regression model, regressing price against all the variables in our final,
+processed training set. 
+\begin{equation}
+lm(price ~., data = review.train)
+\end{equation}
+The goodness of the fit was evaluated in two ways: against our
 regression assumptions and with cross-validated mean squared error. The residuals vs fitted
 values plot of the fitted regression object showed a cluster of points around 0 with high
 outliers, potential influential points, and an uneven distribution. Our baseline linear model was
@@ -203,15 +250,23 @@ check this number ##
 With our baseline in hand, we logically assumed that it’s possible the fit could be
 improved by improving the bias-variance tradeoff we were dealing with. To make the model
 more generalizable and get a sense for which predictors were important, we fit a ridge and
-lasso model on our training set. We used ## code here cv.glmnet ## cross validation
-techniques to establish the optimal lambda penalty value for both the ridge and lasso
-regression techniques. Our cross-validated mean squared errors for both ridge and lasso were
+lasso model on our training set, where equations 2 and 3 represent ridge and lasso respectively.
+\begin{align}
+cv.glmnet(model.matrix(price~., data = review.train), review.train.price, alpha = 0) \\
+cv.glmnet(model.matrix(price~., data = review.train), review.train.price, alpha = 1) 
+\end{align}
+We used cross validation techniques to establish the optimal lambda penalty value for both the ridge and lasso
+regression models above. Our cross-validated mean squared errors for both ridge and lasso were
 around 8,000 which was an improvement on our baseline model. ## check this number ##
 We further explored trees and random forests. Given the data had a mix of categorical
 and numeric predictors, with some outliers in the data, trees and random forests provide a
-robust measure that does not lose predictive power to high outliers and non-linearity. We fit a
-normal decision tree, and a pruned version of the tree. ## code here ## From the plot of the
-decision tree we chose a cp parameter that minimized relative error. The cross validated mean
+robust measure that does not lose predictive power to high outliers and non-linearity. We also fit a
+normal decision tree, and a pruned version of the tree, shown below.
+\begin{align}
+tree = rpart(price~., data = review.train) \\
+pruned.tree = prune(tree, cp = 0.019)
+\end{align}
+From the plot of the decision tree we chose a cp parameter that minimized relative error. The cross validated mean
 squared errors both the normal decision tree and pruned tree improved upon ridge/lasso and
 were around 6,000.
 
@@ -220,10 +275,13 @@ search on a subset of features for the best split to make rather than evaluating
 decision tree. In addition, random forests retain the strengths of decision trees in working with
 numeric and categorical predictors and generally produce low bias, moderate variance models.
 
-We fit a random forest with 500 trees as a baseline on our training set. ## code here ##
+We fit a random forest with 500 trees as a baseline on our training set.
+\begin{align}
+randomForest(price~., data = review.train, ntree = 500)
+\end{align}
 Random forests had the lowest cross-validated mean squared error around 4000. The
 predictions that the random forest produced were the closest to the price of the listings in our
-training set. TuneRF here?
+training set. ## TuneRF here? ##
 
 ## Classification Model Selection
 
