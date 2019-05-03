@@ -426,3 +426,105 @@ the time of the year when listings are most popular could be fruitful. It’s al
 that the data we have is from the host’s perspective, including data on the user could further
 enrich the dataset and possibly provide a more complete picture as to what influences price
 and review score.
+
+
+# Extra Credit: Boston
+
+## Exploration
+
+We investigated mid-sized cities, with a large enough dataset, and decided on Boston. Following a similar procedure to our pre-processing for the Seattle dataset, we stripped all the values of unnecessary characters and converted them into numeric values and factors. Likewise, we decided to create a feature representing the number of amenities in each listing and removed the $\it{amenities}$ columns. We also removed the $\it{property\_type}$ and $\it{neighbourhood\_group\_cleansed}$ columns as they proved problematic due to many NA values and the number of levels. Since the geographical locations proved to be very important in our previous models, we added the relative distances to three popular locations in Boston: Fenway Park, Faneuil Hall Marketplace, and Freedom Trail. 
+
+## Regression Model Selection
+
+As before, we split our data into a training and testing set, subsetting 75% and 25% of the original data respectively. We begin by taking a look at a multivariate linear model as our baseline model, and train our model on our training data set.
+\begin{equation}
+lm(price \sim., data = boston.train)
+\end{equation}
+Upon running a 5-fold cross-validation, the linear model resulted in an MSE of 10108. 
+
+Based on the success of the trees model from our Seattle dataset, we can take a look at trees and pruned trees, represented in the code below respectively.
+\begin{align}
+tree = rpart(price \sim., data = boston.train) \\
+pruned.tree = prune(tree, cp = 0.019)
+\end{align}
+Once again, the unpruned tree performed better than the pruned tree, resulting in an MSE of 8468 and 9675 respectively. Compared to the Seattle dataset, this has a worse prediction power for $\it{price}$.
+
+Last but not least, we now move onto random forests. We used 500 trees due to the success from our Seattle dataset. The model fit is shown below.
+\begin{equation}
+randomForest(review\_scores\_rating \sim., data = boston.train, ntree = 500, na.action = na.exclude)
+\end{equation}
+The 5-folds cross-validated MSE for the random forest model came out to be 2370. This result is much lower than the best prediction on the Seattle dataset. Looking at the plots of the importance of the variables, we see that the $\it{cleaning\_fee}$ and $\it{room\_type}$ were very informative.
+
+To summarize, the table below culminates the MSE values for all the models tested.
+
+```{r,echo=FALSE}
+library(knitr)
+models = c("Linear","Tree","Pruned Tree","Random Forest")
+mse = c("10108.32","8467.91","9674.71","2370.46")
+kable(cbind(models,mse))
+```
+
+## Classification Model Selection
+
+Given the dataset that we had was processed very similar to our Seattle dataset, a similar
+methodical approach to finding the best model was utilized. As before, we fit a naive bayes
+model to function as our baseline for comparison. We fit a Naive Bayes model with
+$\it{review\_scores\_rating}$ as our response variable. 
+\begin{equation}
+naiveBayes(review\_scores\_rating \sim., data = boston.train)
+\end{equation}
+A 5 fold cross validation returned a
+misclassification error on our validation set of 28.22%. There was definite improvement here,
+and with the similar idea that support vector machines fit with different kernel functions could
+separate the two classes effectively, we decided to fit an SVM.
+
+Three SVM models were fit with three different kernel functions: a linear, polynomial and radial
+SVM. 5 fold cross validation returned misclassification errors of 25.50%, 28.22% and 22.65%
+respectively. 
+\begin{align}
+svm(review\_scores\_rating \sim., data = boston.train, kernel = "linear") \\
+svm(review\_scores\_rating \sim., data = boston.train, kernel = "polynomial") \\
+svm(review\_scores\_rating \sim., data = boston.train, kernel = "radial")
+\end{align}
+The radial kernel, as expected, performed best on the data since it is the kernel
+with the most flexibility. Interestingly, the polynomial kernel SVM performed worse than the
+linear kernel SVM, indicating that a linear fit would perform better on the data. Our next course
+of action would be to fit the data through a gradient boosting technique and a random forest.
+These two techniques were chosen because they produced some of the best results in our
+previous analysis and logically, we assumed they would be productive on the Boston dataset
+as well.
+
+The boosting method utilizing the AdaBoost learner was fit on the same formula as the other
+techniques and its cross-validated misclassification error was 22.98%. 
+\begin{equation}
+boosting(review\_scores\_rating \sim., data = boston.train, mfinal = 100, coeflearn = "Freund")
+\end{equation}
+The Radial SVM
+performed better than the boosted tree technique. It’s possible that the data is especially
+amenable to a complex decision boundary that the radial kernel provides. The ensemble
+learner (boosting) wasn’t as productive at classification.
+
+Finally, we fit a random forest on the training data with $\it{review\_scores\_rating}$ as the response
+variable. 
+\begin{equation}
+randomForest(review\_scores\_rating \sim., data = boston.train, ntree = 500, na.action = na.exclude)
+\end{equation}
+Since the boosted method didn’t do substantially better than the radial SVM, we
+hypothesized that random forest wouldn’t do much better than the boosting technique. The
+cross-validated misclassification error for the random forest was 21.74%. It performed the best
+out of all techniques tried. We tuned the random forest for the number of variables randomly
+sampled as candidates for the best possible split. The tuned classifier had marginally better
+misclassification error of 21.23%.
+
+To summarize, the table below culminates the misclassification rates of each of the models tested.
+
+```{r,echo=FALSE}
+library(knitr)
+models = c("Naive Bayes","Linear SVM","Polynomial SVM", "Radial SVM", "ADA Boost", "Random Forest", "Tuned Random Forest")
+missclassification = c("0.2823","0.2550","0.2823","0.2266","0.2298","0.2175","0.2123")
+kable(cbind(models,missclassification))
+```
+
+## City Comparison
+
+Thus, we see that the overall prediction of $\it{price}$ for the Boston dataset was almost twice as good as that of the Seattle dataset, but the misclassification rates of the Boston $\it{review\_scores\_rating}$ variable were much worse. The best performing model for both datasets was the Random Forest, and taking a look at the important variables of each model, we note that in Seattle the features relating to the geographical location of the listings proved most impactful than some of the features relating to the actual location. There are many iconic areas spread out in Seattle that might explain the high desirability of these variables. In Boston, overall comfort within the listing was very highly regarded. This is made evident by the importance of hosting experience and lower cleaning fees. The nearby hotspots still proved significant, but in terms of the magnitude of the Gini indices of the variables in the Boston dataset's Random Forest, they were nowhere as important. The $\it{host\_is\_superhost}$ variable had the highest Gini index for Seattle, reaching 80, whereas $\it{host\_listings\_count}$ was 120. In our exploration of both datasets, we concluded that more data would provide better accuracy and mean squared error predictions, and next steps for our Boston dataset would be to try further modeling through Neural Nets and acquisition of more user data. 
