@@ -391,7 +391,7 @@ The table below summarizes the cross-validated missclassification rate of each o
 library(knitr)
 models = c("Naive Bayes","Logistic Regression", "Linear SVM", "Polynomial SVM", "Radial SVM", "ADA Boost", "Random Forest")
 missclassification = c(17.8,12.8,12.1,12.1,12.0,11.7,11.4)
-kable(cbind(models,mse))
+kable(cbind(models,missclassification))
 ```
 
 # Analysis of Results

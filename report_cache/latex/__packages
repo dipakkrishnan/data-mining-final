@@ -1,7 +1,5 @@
 base
 stringr
+geosphere
 plyr
 knitr
-geosphere
-magrittr
-imager
